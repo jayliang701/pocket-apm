@@ -2,6 +2,7 @@ import { AppConfig } from "../types";
 import Monitor from "./Monitor";
 import LogMonitor from "./LogMonitor";
 import ConfigedWorkerManager from "../utils/ConfigedWorkerManager";
+import SkywalkingMonitor from "./SkywalkingMonitor";
 
 export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
 
@@ -16,11 +17,14 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
     }
 
     protected override async afterReload() {
-        const { log } = this.config;
+        const { log, skywalking } = this.config;
 
         const newHash: Record<string, any> = {};
         if (log && log.watch && log.watch.length > 0) {
             newHash['log'] = LogMonitor;
+        }
+        if (skywalking) {
+            newHash['skywalking'] = SkywalkingMonitor;
         }
         
         const remains: Monitor[] = [];
