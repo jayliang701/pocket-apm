@@ -27,6 +27,7 @@ export default class LogMonitor extends Monitor {
     }
 
     override async dispose() {
+        await super.dispose();
         for (let watcherId in this.logWatchers) {
             const watcher = this.logWatchers[watcherId];
             await watcher.dispose();

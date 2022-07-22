@@ -53,11 +53,17 @@ export type SingleLogConfig = {
     file: string;
 } & Omit<Partial<LogConfig>, 'watch'>;
 
+export type SkywalkingConfig = {
+    host: string;
+    port: number;
+};
+
 export type AppConfig = {
     name: string;
     publicIP?: string;
     privateIP?: string;
     log?: LogConfig;
+    skywalking?: SkywalkingConfig;
 };
 
 export interface Worker {

@@ -29,7 +29,7 @@ export default abstract class ConfigedWorkerManager<T, W extends Worker> extends
         for (let worker of newWorkers) {
             this.workers[worker.id] = worker;
             console.log('add new worker --> ', worker.id);
-            worker.start();
+            await worker.start();
         }
     }
 

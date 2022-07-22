@@ -2,6 +2,11 @@ module.exports = {
     name: 'TestApp',
     // publicIP?: string;
     // privateIP?: string;
+    skywalking: {
+        port: 11800,
+        host: '0.0.0.0',
+        
+    },
     log: {
         // dateTimeFilter: /\[\d\d\d\d\-\d\d\-\d\d\s\d\d:\d\d:\d\d(\.\d\d\d)?\]/,
         /* 用函数方式从事件的首行日志文本中解析出日期时间
