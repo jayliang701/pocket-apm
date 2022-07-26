@@ -14,6 +14,10 @@ export default class LogWatcher extends EventEmitter {
 
     protected timer: any;
 
+    protected startLogErr: boolean = false;
+
+    protected lastPos: number = 0;
+
     get id(): string {
         return this.targetFile;
     }
@@ -25,6 +29,8 @@ export default class LogWatcher extends EventEmitter {
     constructor(config: SingleLogConfig) {
         super();
         this.config = config;
+        this.onFileNewLine = this.onFileNewLine.bind(this);
+        this.onFileEOF = this.onFileEOF.bind(this);
     }
 
     updateConfig(config: Omit<SingleLogConfig, 'file'>) {
@@ -39,40 +45,8 @@ export default class LogWatcher extends EventEmitter {
 
         console.log('start watch log file ---> ', this.targetFile);
         this.watcher = new Tail(this.targetFile);
-        let startLogErr = false;
-        let lastPos = 0;
-        this.watcher.on('line', (line) => {
-            if (this.checkIsTargetLog(line)) {
-                //日志输出第一行, 带日期时间
-                //先把之前错误日志处理了
-
-                this.checkAlert();
-
-                this.logs.length = 0;
-                if (this.checkIsErrorLog(line)) {
-                    startLogErr = true;
-                } else {
-                    startLogErr = false;
-                }
-            }
-            if (startLogErr) this.logs.push(line);
-        });
-        this.watcher.on('eof', pos => {
-            if (lastPos < 0) {
-                lastPos = pos;
-                console.log(`start watching file. current end ---> ${pos}`);
-                return;
-            }
-            if (this.logs.length < 1) {
-                return;
-            }
-            lastPos = pos;
-
-            this.checkAlert();
-
-            this.logs.length = 0;
-            startLogErr = false;
-        });
+        this.watcher.on('line', this.onFileNewLine);
+        this.watcher.on('eof', this.onFileEOF);
         this.watcher.start();
     }
 
@@ -81,12 +55,48 @@ export default class LogWatcher extends EventEmitter {
 
         if (this.watcher) {
             console.log('stop watch log file ---> ', this.targetFile);
+            this.watcher.off('line', this.onFileNewLine);
+            this.watcher.off('eof', this.onFileEOF);
             this.watcher.stop();
         }
     }
 
     async dispose() {
         await this.stop();
+    }
+
+    private onFileNewLine(line: string) {
+        if (this.checkIsTargetLog(line)) {
+            //日志输出第一行, 带日期时间
+            //先把之前错误日志处理了
+
+            this.checkAlert();
+
+            this.logs.length = 0;
+            if (this.checkIsErrorLog(line)) {
+                this.startLogErr = true;
+            } else {
+                this.startLogErr = false;
+            }
+        }
+        if (this.startLogErr) this.logs.push(line);
+    }
+
+    private onFileEOF(pos: number) {
+        if (this.lastPos < 0) {
+            this.lastPos = pos;
+            console.log(`start watching file. current end ---> ${pos}`);
+            return;
+        }
+        if (this.logs.length < 1) {
+            return;
+        }
+        this.lastPos = pos;
+
+        this.checkAlert();
+
+        this.logs.length = 0;
+        this.startLogErr = false;
     }
 
     private parseDateTime(log: string): string | undefined {

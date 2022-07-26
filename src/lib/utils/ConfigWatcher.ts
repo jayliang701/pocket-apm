@@ -54,11 +54,16 @@ export default class ConfigWatcher<T> {
         
     }
 
+    protected setConfigDefaults() {
+
+    }
+
     protected async reloadConfig() {
         const content = await readFile(this.configFile, 'utf8');
         try {
             const mod = eval(content);
             this.checkConfigFormat(mod);
+            this.setConfigDefaults();
             console.log('config reloaded ---> ', this.configFile);
             this.config = mod;
 

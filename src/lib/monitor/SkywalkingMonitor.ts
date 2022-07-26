@@ -2,11 +2,15 @@ import Monitor from "./Monitor";
 import { SkywalkingConfig } from "../types";
 import RPCServer from "./skywalking/RPCServer";
 import ServiceHandler from "./skywalking/handler/ServiceHandler";
-import ProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
+import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
+import fs from "fs/promises";
+import path from "path";
 
 export default class SkywalkingMonitor extends Monitor {
 
-    server: RPCServer;
+    get server(): RPCServer {
+        return RPCServer.getSharedServer();
+    }
 
     handlers: Record<string, ServiceHandler> = {};
 
@@ -14,62 +18,45 @@ export default class SkywalkingMonitor extends Monitor {
         return this.config?.skywalking;
     }
 
+    protected setConfigDefaults() {
+        this.skywalkingConfig.metricLogPath = this.skywalkingConfig.metricLogPath || path.resolve(process.cwd(), `.metric/${this.skywalkingConfig.service}`);
+    }
+
     private registerServiceHandler(Cls: typeof ServiceHandler) {
-        if (!this.server) return;
+        const { server, skywalkingConfig, handlers } = this;
+        if (!server || !skywalkingConfig) return;
 
         const handler = new Cls();
-        this.handlers[handler.serviceName] = handler;
+        handler.refresh(skywalkingConfig);
+        handlers[handler.serviceName] = handler;
         handler.process = handler.process.bind(handler);
         this.server.on(handler.serviceName, handler.process);
     }
 
-    private async startServer() {
-        if (this.server) {
-            console.warn('RPC server is already running.');
-            return;
-        }
-        this.server = new RPCServer();
-        
-        this.registerServiceHandler(ProcessMetricHandler);
-
-        await this.server.run(this.skywalkingConfig);
-    }
-
-    private async stopServer() {
-        for (let serviceName in this.handlers) {
-            const handler = this.handlers[serviceName];
-            this.server && this.server.off(serviceName, handler.process);
-            handler.dispose();
+    private unRegisterServiceHandlers() {
+        for (let key in this.handlers) {
+            const handler = this.handlers[key];
+            this.server.off(handler.serviceName, handler.process);
         }
         this.handlers = {};
-        
-        if (this.server) {
-            await this.server.shutdown();
-        }
-        this.server = undefined;
     }
-
-    // private async refreshRPCServices() {
-    //     if (!this.server) return;
-
-        
-    // }
 
     override async start() {
         await this.refresh();
     }
 
     override async refresh() {
-        if (this.server) {
-            await this.server.run(this.skywalkingConfig);
-        } else {
-            await this.startServer();
-        }
+        this.setConfigDefaults();
+
+        await fs.mkdir(this.skywalkingConfig.metricLogPath, { recursive: true });
+
+        this.unRegisterServiceHandlers();
+        this.registerServiceHandler(JavaProcessMetricHandler);
     }
 
-    override async dispose() {
+    async dispose() {
+        this.unRegisterServiceHandlers();
         await super.dispose();
-        await this.stopServer();
     }
 
 }

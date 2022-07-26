@@ -12,8 +12,8 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
         }
     }
 
-    override async refresh() {
-        //no need to do anything
+    async refresh() {
+        //do nothing here
     }
 
     protected override async afterReload() {

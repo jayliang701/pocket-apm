@@ -2,8 +2,9 @@
 
 import { Server, loadPackageDefinition, ServerCredentials } from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
-import { SkywalkingConfig } from 'src/lib/types';
+import { SkywalkingServerConfig } from 'src/lib/types';
 import path from 'path';
+import fs from 'fs/promises';
 import EventEmitter from 'events';
 
 type ServiceHandler = (service: { request: any }, callback: any) => void;
@@ -24,7 +25,21 @@ const loadMetricProto = (filename: string): any => {
 
 export default class RPCServer extends Server {
 
-    config: SkywalkingConfig;
+    private static instance: RPCServer;
+
+    public static create(): RPCServer {
+        if (!RPCServer.instance) {
+            const server = new RPCServer();
+            RPCServer.instance = server;
+        }
+        return RPCServer.instance;
+    }
+
+    public static getSharedServer() {
+        return RPCServer.instance;
+    }
+
+    config: SkywalkingServerConfig;
 
     running: boolean = false;
 
@@ -42,7 +57,7 @@ export default class RPCServer extends Server {
         this.dispatcher.off(eventName, handler);
     }
 
-    private diffConfig(config: SkywalkingConfig) {
+    private diffConfig(config: SkywalkingServerConfig) {
         if (!this.config ||
             (this.config.host !== config.host ||
                 this.config.port !== config.port)) {
@@ -51,7 +66,7 @@ export default class RPCServer extends Server {
         return false;
     }
 
-    run(config: SkywalkingConfig): Promise<void> {
+    run(config: SkywalkingServerConfig): Promise<void> {
         return new Promise(async (resolve, reject) => {
 
             let restart = false;
@@ -70,7 +85,9 @@ export default class RPCServer extends Server {
             await this.shutdown();
 
             const { host, port } = this.config;
+
             this.registerRPCServices();
+
             this.bindAsync(
                 `${host}:${port}`,
                 ServerCredentials.createInsecure(),
@@ -112,9 +129,17 @@ export default class RPCServer extends Server {
         });
     }
 
+    dispose(): void {
+        if (this === RPCServer.instance) {
+            RPCServer.instance = undefined;
+        }
+        this.shutdown();
+    }
+
     private createServiceHandler (serviceName: string, methodName: string): ServiceHandler {
         return ({ request }, callback) => {
-            this.dispatcher.emit(serviceName, { method: methodName, request });
+            const { service } = request;
+            this.dispatcher.emit(service ? `${service}@${serviceName}` : serviceName, { method: methodName, request });
             callback(null, { commands: [] });
         }
     }

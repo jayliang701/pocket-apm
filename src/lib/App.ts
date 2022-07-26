@@ -1,12 +1,34 @@
 
 import AppNode from './monitor/AppNode';
-import { Config } from './types';
+import RPCServer from './monitor/skywalking/RPCServer';
+import { Config, SkywalkingServerConfig } from './types';
 import ConfigedWorkerManager from './utils/ConfigedWorkerManager';
+
+const startServer = async (skywalkingServerConfig: SkywalkingServerConfig) => {
+    let server = RPCServer.getSharedServer();
+    if (!server) {
+        server = RPCServer.create();
+    }
+    await server.run(skywalkingServerConfig);
+}
+
+const stopServer = async () => {
+    const server = RPCServer.getSharedServer();
+    if (server) {
+        await server.shutdown();
+    }
+}
 
 export default class App extends ConfigedWorkerManager<Config, AppNode> {
 
     protected override async afterReload() {
-        const apps = this.config.apps || [];
+        const { apps = [], skywalking } = this.config;
+
+        if (skywalking) {
+            await startServer(skywalking);
+        } else {
+            await stopServer();
+        }
 
         const newHash: Record<string, any> = {};
         apps.forEach(appConfigFile => {
@@ -33,6 +55,6 @@ export default class App extends ConfigedWorkerManager<Config, AppNode> {
             newWorkers.push(worker);
         }
 
-        this.processWorkers(removes, remains, newWorkers);
+        await this.processWorkers(removes, remains, newWorkers);
     }
 }

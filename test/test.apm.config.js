@@ -1,11 +1,10 @@
 module.exports = {
-    name: 'TestApp',
+    name: 'demo1',
     // publicIP?: string;
     // privateIP?: string;
     skywalking: {
-        port: 11800,
-        host: '0.0.0.0',
-        
+        service: 'demo1',
+        // metricLogPath: '/xxx/xxx/xx',   //记录metric数据的文件存放路径, 默认为 ${process.cwd()}/.metric/${service}
     },
     log: {
         // dateTimeFilter: /\[\d\d\d\d\-\d\d\-\d\d\s\d\d:\d\d:\d\d(\.\d\d\d)?\]/,
