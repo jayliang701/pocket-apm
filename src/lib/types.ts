@@ -22,6 +22,7 @@ export type SmtpConfig = {
 
 export type Config = {
     apps: string[];
+    skywalking?: SkywalkingServerConfig;
     notify: {
         lark?: {
             webhook: string;
@@ -53,9 +54,14 @@ export type SingleLogConfig = {
     file: string;
 } & Omit<Partial<LogConfig>, 'watch'>;
 
-export type SkywalkingConfig = {
+export type SkywalkingServerConfig = {
     host: string;
     port: number;
+};
+
+export type SkywalkingConfig = {
+    service: string;
+    metricLogPath: string;
 };
 
 export type AppConfig = {

@@ -4,7 +4,7 @@ import ConfigWatcher from './ConfigWatcher';
 export default abstract class ConfigedWorkerManager<T, W extends Worker> extends ConfigWatcher<T> implements Worker {
 
     async refresh() {
-        throw new Error("Method not implemented.");
+        throw new Error("refresh method should be overrided.");
     }
 
     get id(): string {

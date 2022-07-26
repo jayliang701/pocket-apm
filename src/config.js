@@ -1,7 +1,12 @@
 module.exports = {
     apps: [
-        '/your app config path/test.apm.config.js',
+        '/Users/jay/Documents/projects/library/pocket-apm/test/test.apm.config.js',
+        '/Users/jay/Documents/projects/library/pocket-apm/test/test222.apm.config.js',
     ],
+    skywalking: {
+        port: 11800,
+        host: '0.0.0.0',
+    },
     //推送配置
     notify: {
         //飞书机器人消息推送
