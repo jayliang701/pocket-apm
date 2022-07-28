@@ -138,8 +138,11 @@ export default class RPCServer extends Server {
 
     private createServiceHandler (serviceName: string, methodName: string): ServiceHandler {
         return ({ request }, callback) => {
-            const { service } = request;
-            this.dispatcher.emit(service ? `${service}@${serviceName}` : serviceName, { method: methodName, request });
+            let app: string;
+            if (request) {
+                app = request.service;
+            }
+            this.dispatcher.emit('service', { app, service: serviceName, method: methodName, request });
             callback(null, { commands: [] });
         }
     }

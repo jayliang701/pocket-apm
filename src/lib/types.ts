@@ -78,3 +78,30 @@ export interface Worker {
     refresh(): Promise<void>;
     dispose(): Promise<void>;
 }
+
+export type RPCServiceRequest = {
+    service: string;
+    serviceInstance: string;
+    [name: string]: any;
+};
+
+export type RPCServicePayload = {
+    method: string;
+    request: RPCServiceRequest;
+};
+
+export type RPCServiceEventPayload = {
+    app?: string;
+    service: string;
+} & RPCServicePayload;
+
+export type ProcessMessage = {
+    event: 'reload';
+    data: any;
+};
+
+export type ProcessConfigReloadData = {
+    app: string;
+    configFile: string;
+    skywalkingApp?: string;
+};

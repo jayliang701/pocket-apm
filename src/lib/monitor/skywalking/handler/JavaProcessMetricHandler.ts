@@ -28,11 +28,7 @@ const LINE_LEN = Buffer.from(`${Date.now()} \n`, 'utf-8').byteLength + VALUE_LEN
 export default class JavaProcessMetricHandler extends ServiceHandler {
 
     get service(): string {
-        return this.config.service;
-    }
-
-    get serviceName(): string {
-        return this.service + '@JVMMetricReportService';
+        return 'JVMMetricReportService';
     }
 
     isFlushing: boolean = false;

@@ -1,7 +1,6 @@
 module.exports = {
     apps: [
         '/Users/jay/Documents/projects/library/pocket-apm/test/test.apm.config.js',
-        '/Users/jay/Documents/projects/library/pocket-apm/test/test222.apm.config.js',
     ],
     skywalking: {
         port: 11800,

@@ -1,16 +1,12 @@
 import Monitor from "./Monitor";
-import { SkywalkingConfig } from "../types";
-import RPCServer from "./skywalking/RPCServer";
+import { RPCServiceEventPayload, SkywalkingConfig } from "../types";
 import ServiceHandler from "./skywalking/handler/ServiceHandler";
 import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
 import fs from "fs/promises";
 import path from "path";
+import AppNode from "./AppNode";
 
 export default class SkywalkingMonitor extends Monitor {
-
-    get server(): RPCServer {
-        return RPCServer.getSharedServer();
-    }
 
     handlers: Record<string, ServiceHandler> = {};
 
@@ -18,26 +14,29 @@ export default class SkywalkingMonitor extends Monitor {
         return this.config?.skywalking;
     }
 
+    constructor(appNode: AppNode, id?:string) {
+        super(appNode, id);
+        this.onRPCService = this.onRPCService.bind(this);
+    }
+
     protected setConfigDefaults() {
         this.skywalkingConfig.metricLogPath = this.skywalkingConfig.metricLogPath || path.resolve(process.cwd(), `.metric/${this.skywalkingConfig.service}`);
     }
 
     private registerServiceHandler(Cls: typeof ServiceHandler) {
-        const { server, skywalkingConfig, handlers } = this;
-        if (!server || !skywalkingConfig) return;
+        const { skywalkingConfig, handlers } = this;
+        if (!skywalkingConfig) return;
+
+        process.on('message', this.onRPCService);
 
         const handler = new Cls();
-        handler.refresh(skywalkingConfig);
-        handlers[handler.serviceName] = handler;
         handler.process = handler.process.bind(handler);
-        this.server.on(handler.serviceName, handler.process);
+        handler.refresh(skywalkingConfig);
+        handlers[handler.service] = handler;
     }
 
     private unRegisterServiceHandlers() {
-        for (let key in this.handlers) {
-            const handler = this.handlers[key];
-            this.server.off(handler.serviceName, handler.process);
-        }
+        process.off('message', this.onRPCService);
         this.handlers = {};
     }
 
@@ -57,6 +56,13 @@ export default class SkywalkingMonitor extends Monitor {
     async dispose() {
         this.unRegisterServiceHandlers();
         await super.dispose();
+    }
+
+    private async onRPCService({ service, method, request }: RPCServiceEventPayload) {
+        const handler = this.handlers[service];
+        if (!handler) return;
+
+        handler.process({ method, request });
     }
 
 }
