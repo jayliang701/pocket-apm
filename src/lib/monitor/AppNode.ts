@@ -1,4 +1,4 @@
-import { AppConfig } from "../types";
+import { AppConfig, ProcessConfigReloadData } from "../types";
 import Monitor from "./Monitor";
 import LogMonitor from "./LogMonitor";
 import ConfigedWorkerManager from "../utils/ConfigedWorkerManager";
@@ -17,7 +17,7 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
     }
 
     protected override async afterReload() {
-        const { log, skywalking } = this.config;
+        const { name, log, skywalking } = this.config;
 
         const newHash: Record<string, any> = {};
         if (log && log.watch && log.watch.length > 0) {
@@ -50,7 +50,14 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
             newWorkers.push(monitor);
         }
 
-        this.processWorkers(removes, remains, newWorkers);
+        await this.processWorkers(removes, remains, newWorkers);
+
+        const payload: ProcessConfigReloadData = {
+            app: name,
+            skywalkingApp: skywalking ? skywalking.service : undefined,
+            configFile: this.configFile,
+        };
+        process.send({ event: 'reload', data: payload });
     }
 
     async dispose() {
