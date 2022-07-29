@@ -11,6 +11,7 @@ module.exports = {
         //飞书机器人消息推送
         lark: {
             webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx',
+            // secret: 'xxxx',
             // producer: '/my_path/lark_producer.js'
         },
         //邮件推送

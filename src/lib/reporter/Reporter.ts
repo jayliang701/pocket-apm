@@ -1,5 +1,5 @@
 import type { IMonitor } from "../monitor/Monitor";
-import type { AppConfig, Config, EmailReport } from "../types";
+import type { AppConfig, Config, Report } from "../types";
 
 export default abstract class Reporter {
 
@@ -30,7 +30,7 @@ export default abstract class Reporter {
 
     }
 
-    protected sendEmailReport(report: EmailReport) {
+    protected sendReport(report: Report) {
         process.send({ 
             event: 'report', 
             data: { 
@@ -38,6 +38,12 @@ export default abstract class Reporter {
                 report: JSON.stringify(report) 
             } 
         });
+    }
+
+    protected sendReports(reports: Report[]) {
+        for (const report of reports) {
+            this.sendReport(report);
+        }
     }
 
 }
