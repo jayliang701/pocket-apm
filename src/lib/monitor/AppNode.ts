@@ -1,10 +1,53 @@
-import { AppConfig, ProcessConfigReloadData } from "../types";
+import { AppConfig, Config, ProcessConfigReloadData, ProcessMessages } from "../types";
 import Monitor from "./Monitor";
 import LogMonitor from "./LogMonitor";
 import ConfigedWorkerManager from "../utils/ConfigedWorkerManager";
 import SkywalkingMonitor from "./SkywalkingMonitor";
+import type { MainProcessEvent } from "../MainProcess";
+
+type MainProcessMessage = {
+    event: keyof MainProcessEvent;
+    data: MainProcessEvent[keyof MainProcessEvent];
+};
+
+const syncMainConfig = (): Promise<Config> => {
+    return new Promise(async (resolve, reject) => {
+        const handler = ({ event, data } : MainProcessMessage) => {
+            if (event === 'sync_main_config') {
+                process.off('message', handler);
+                try {
+                    const conf: Config = JSON.parse(data.config);
+                    resolve(conf);
+                } catch (err) {
+                    reject(err);
+                }
+            }
+        }
+        process.on('message', handler);
+        await sendToMainProcess('request_config', {});
+    })
+}
+
+const sendToMainProcess = (event: keyof ProcessMessages, data: ProcessMessages[keyof ProcessMessages]): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        process.send({ event, data }, (err) => {
+            if (err) {
+                console.error('send message to main process failed ---> ', err);
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    })
+}
 
 export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
+
+    private mainConfig: Config;
+
+    public getMainConfig(): Config {
+        return this.mainConfig;
+    }
 
     protected override checkConfigFormat(config: AppConfig) {
         if (!config.name) {
@@ -17,6 +60,9 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
     }
 
     protected override async afterReload() {
+
+        this.mainConfig = await syncMainConfig();
+
         const { name, log, skywalking } = this.config;
 
         const newHash: Record<string, any> = {};
@@ -57,7 +103,7 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
             skywalkingApp: skywalking ? skywalking.service : undefined,
             configFile: this.configFile,
         };
-        process.send({ event: 'reload', data: payload });
+        sendToMainProcess('reload', payload);
     }
 
     async dispose() {

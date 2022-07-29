@@ -4,7 +4,6 @@ import ServiceHandler from "./skywalking/handler/ServiceHandler";
 import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
 import fs from "fs/promises";
 import path from "path";
-import AppNode from "./AppNode";
 
 export default class SkywalkingMonitor extends Monitor {
 
@@ -12,11 +11,6 @@ export default class SkywalkingMonitor extends Monitor {
 
     get skywalkingConfig(): SkywalkingConfig {
         return this.config?.skywalking;
-    }
-
-    constructor(appNode: AppNode, id?:string) {
-        super(appNode, id);
-        this.onRPCService = this.onRPCService.bind(this);
     }
 
     protected setConfigDefaults() {
@@ -58,7 +52,7 @@ export default class SkywalkingMonitor extends Monitor {
         await super.dispose();
     }
 
-    private async onRPCService({ service, method, request }: RPCServiceEventPayload) {
+    onRPCService = async ({ service, method, request }: RPCServiceEventPayload) => {
         const handler = this.handlers[service];
         if (!handler) return;
 

@@ -1,8 +1,12 @@
-import EventEmitter from 'events';
 import Tail from 'tail-file';
 import { Log, SingleLogConfig } from '../types';
+import TypedEventEmitter from './TypedEventEmitter';
 
-export default class LogWatcher extends EventEmitter {
+export type LogWatcherEvents = {
+    notify: (watcherId: string, alerts: Log[]) => Promise<void> | void;
+};
+
+export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
 
     protected config: SingleLogConfig;
 
@@ -154,7 +158,9 @@ export default class LogWatcher extends EventEmitter {
                     this.pendingAlerts.length = 0;
 
                     // await sendEmail(alerts);
-                    console.log(alerts)
+                    // console.log(alerts);
+                    // this.emit(LogWatcher.EVENT_NOTIFY, );
+                    this.emit('notify', this.id, alerts);
                 } catch (err) {
                     console.error(err);
                 }

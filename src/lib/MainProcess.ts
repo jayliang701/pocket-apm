@@ -1,10 +1,21 @@
 
 import AppProcess from './AppProcess';
 import RPCServer from './monitor/skywalking/RPCServer';
-import { Config, ProcessConfigReloadData, RPCServiceEventPayload, SkywalkingServerConfig } from './types';
+import Notify from './notify/Notify';
+import { Config, ProcessConfigReloadData, ProcessReportData, Report, RPCServiceEventPayload, SkywalkingServerConfig } from './types';
 import ConfigedWorkerManager from './utils/ConfigedWorkerManager';
 
-export default class App extends ConfigedWorkerManager<Config, AppProcess> {
+export type MainProcessEvent = {
+    sync_main_config: SyncMainConfigMessage;
+};
+
+type SyncMainConfigMessage = {
+    config: string;
+};
+
+export default class MainProcess extends ConfigedWorkerManager<Config, AppProcess> {
+
+    private notify: Notify = new Notify();
 
     private appMapping: Record<string, string> = {};
     private skywalkingAppMapping: Record<string, string> = {};
@@ -42,8 +53,6 @@ export default class App extends ConfigedWorkerManager<Config, AppProcess> {
 
     constructor(configFile: string) {
         super(configFile);
-        this.onRPCService = this.onRPCService.bind(this);
-        this.onAppConfigReload = this.onAppConfigReload.bind(this);
     }
 
     private async startServer(skywalkingServerConfig: SkywalkingServerConfig) {
@@ -63,7 +72,7 @@ export default class App extends ConfigedWorkerManager<Config, AppProcess> {
         }
     }
 
-    private async onRPCService(payload: RPCServiceEventPayload) {
+    onRPCService = async (payload: RPCServiceEventPayload) => {
         const { app } = payload;
         if (app) {
             const appProcess = this.getAppProcessBySkywalkingApp(app);
@@ -82,6 +91,8 @@ export default class App extends ConfigedWorkerManager<Config, AppProcess> {
             await this.stopServer();
         }
 
+        await this.notify.reload(this.config);
+
         const newHash: Record<string, any> = {};
         apps.forEach(appConfigFile => {
             newHash[appConfigFile] = true;
@@ -98,6 +109,9 @@ export default class App extends ConfigedWorkerManager<Config, AppProcess> {
                 delete newHash[worker.id];
             } else {
                 removes.push(worker);
+                worker.removeAllListeners('app_config_reload');
+                worker.removeAllListeners('request_main_config');
+                worker.removeAllListeners('report');
                 this.removeMapping(workerId);
             }
         }
@@ -105,16 +119,33 @@ export default class App extends ConfigedWorkerManager<Config, AppProcess> {
         //setup new workers
         for (let appConfigFile in newHash) {
             const worker = new AppProcess(appConfigFile);
-            worker.on(AppProcess.EVENT_APP_CONFIG_RELOAD, this.onAppConfigReload);
+            worker.on('app_config_reload', this.onAppConfigReload);
+            worker.on('request_main_config', this.onRequestMainConfig);
+            worker.on('report', this.onReport);
             newWorkers.push(worker);
         }
 
         await this.processWorkers(removes, remains, newWorkers);
     }
 
-    private async onAppConfigReload(payload: ProcessConfigReloadData) {
+    private async syncMainConfig(appProcess: AppProcess) {
+        return appProcess.send('sync_main_config', {
+            config: JSON.stringify(this.config),
+        });
+    }
+
+    onAppConfigReload = async (payload: ProcessConfigReloadData) => {
         const { app, skywalkingApp, configFile } = payload;
         this.appMapping[app] = configFile;
         this.skywalkingAppMapping[skywalkingApp] = configFile;
+    }
+
+    onRequestMainConfig = async (appProcess: AppProcess) => {
+        await this.syncMainConfig(appProcess);
+    }
+
+    onReport = async (data: ProcessReportData) => {
+        const report: Report = JSON.parse(data.report);
+        this.notify.process(report);
     }
 }
