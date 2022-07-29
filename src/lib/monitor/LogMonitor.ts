@@ -1,5 +1,7 @@
-import { LogConfig, SingleLogConfig } from "../types";
+import LogReporter from "../reporter/LogReporter";
+import { Log, LogConfig, SingleLogConfig } from "../types";
 import LogWatcher from "../utils/LogWatcher";
+import AppNode from "./AppNode";
 import Monitor from "./Monitor";
 
 type SharedKeys = { [P in keyof Omit<LogConfig, 'watch' | 'throttle'>]: true };
@@ -18,6 +20,13 @@ export default class LogMonitor extends Monitor {
 
     private logWatchers: Record<string, LogWatcher> = {};
 
+    private reporter: LogReporter;
+
+    constructor(appNode: AppNode, id?:string) {
+        super(appNode, id);
+        this.reporter = new LogReporter(this);
+    }
+
     override async start() {
         await this.refresh();
     }
@@ -30,6 +39,7 @@ export default class LogMonitor extends Monitor {
         await super.dispose();
         for (let watcherId in this.logWatchers) {
             const watcher = this.logWatchers[watcherId];
+            watcher.off('notify', this.onLogNotify);
             await watcher.dispose();
             console.log('destroy watcher --> ', watcher.id);
         }
@@ -68,6 +78,7 @@ export default class LogMonitor extends Monitor {
         }
 
         for (let watcher of removes) {
+            watcher.off('notify', this.onLogNotify);
             await watcher.dispose();
             delete this.logWatchers[watcher.id];
             console.log('remove watcher --> ', watcher.id);
@@ -80,11 +91,16 @@ export default class LogMonitor extends Monitor {
 
         //setup new log watchers 
         for (let logFile in newHash) {
-            let watcher: LogWatcher = new LogWatcher(newHash[logFile]);
+            const watcher: LogWatcher = new LogWatcher(newHash[logFile]);
+            watcher.on('notify', this.onLogNotify);
             this.logWatchers[watcher.id] = watcher;
             console.log('add new watcher --> ', watcher.id);
             watcher.start();
         }
+    }
+
+    onLogNotify = async (watcherId:string, alerts: Log[]) => {
+        this.reporter.process(watcherId, alerts);
     }
 
 }

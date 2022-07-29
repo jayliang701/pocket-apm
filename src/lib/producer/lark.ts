@@ -1,4 +1,0 @@
-
-exports.log = (logs: string[]) => {
-
-}

@@ -1,11 +1,16 @@
-import { ProcessConfigReloadData, ProcessMessage, RPCServiceEventPayload, Worker } from "./types";
+import { ProcessConfigReloadData, ProcessMessage, ProcessReportData, RPCServiceEventPayload, Worker } from "./types";
 import cp, { ChildProcess } from 'child_process';
 import path from 'path';
-import EventEmitter from "events";
+import TypedEventEmitter from "./utils/TypedEventEmitter";
+import { MainProcessEvent } from "./MainProcess";
 
-export default class AppProcess extends EventEmitter implements Worker {
+export type AppProcessEvent = {
+    app_config_reload: (data: ProcessConfigReloadData) => Promise<void> | void;
+    request_main_config: (appProcess: AppProcess) => Promise<void> | void;
+    report: (data: ProcessReportData) => Promise<void> | void;
+};
 
-    public static readonly EVENT_APP_CONFIG_RELOAD: string = 'app_config_reload';
+export default class AppProcess extends TypedEventEmitter<AppProcessEvent> implements Worker {
 
     private configFile: string;
 
@@ -18,7 +23,6 @@ export default class AppProcess extends EventEmitter implements Worker {
     constructor(configFile: string) {
         super();
         this.configFile = configFile;
-        this.onMessageHandler = this.onMessageHandler.bind(this);
     }
 
     async start() {
@@ -32,10 +36,28 @@ export default class AppProcess extends EventEmitter implements Worker {
 
     async dispose() {
         if (this.proc) {
-            this.proc.off('message', this.onMessageHandler);
+            this.proc.removeAllListeners('message');
             this.proc.kill();
             this.proc = undefined;
         }
+    }
+
+    send(event: keyof MainProcessEvent, data: MainProcessEvent[keyof MainProcessEvent]): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (!this.proc) {
+                console.warn('can\'t send message to child process.');
+                resolve();
+                return;
+            }
+            this.proc.send({ event, data }, (err) => {
+                if (err) {
+                    console.error('send message to child process failed ---> ', err);
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        })
     }
 
     processRPCService(payload: RPCServiceEventPayload) {
@@ -43,10 +65,13 @@ export default class AppProcess extends EventEmitter implements Worker {
         this.proc.send(payload);
     }
 
-    private async onMessageHandler(message: ProcessMessage) {
+    onMessageHandler = async (message: ProcessMessage) => {
         if (message.event === 'reload') {
-            const data: ProcessConfigReloadData = message.data;
-            this.emit(AppProcess.EVENT_APP_CONFIG_RELOAD, data);
+            this.emit('app_config_reload', message.data as ProcessConfigReloadData);
+        } else if (message.event === 'request_config') {
+            this.emit('request_main_config', this);
+        } else if (message.event === 'report') {
+            this.emit('report', message.data as ProcessReportData);
         }
     }
 

@@ -95,9 +95,15 @@ export type RPCServiceEventPayload = {
     service: string;
 } & RPCServicePayload;
 
+export type ProcessMessages = {
+    reload: ProcessConfigReloadData;
+    report: ProcessReportData;
+    request_config: {}
+};
+
 export type ProcessMessage = {
-    event: 'reload';
-    data: any;
+    event: keyof ProcessMessages;
+    data: ProcessMessages[keyof ProcessMessages];
 };
 
 export type ProcessConfigReloadData = {
@@ -105,3 +111,47 @@ export type ProcessConfigReloadData = {
     configFile: string;
     skywalkingApp?: string;
 };
+
+export type ProcessReportData = {
+    app: string;
+    report: string;
+};
+
+export type ChannelType = 'email' | 'lark';
+
+export type Report<C extends ChannelType = ChannelType, T = any> = {
+    channel: C;
+    type: 'log' | 'metric';
+    title: string;
+    createTime: number;
+} & T;
+
+export type EmailReport = Report<'email', {
+    plain: string; 
+    html?: string;
+}>;
+
+export type LarkMessage = {
+    msg_type: 'interactive' | 'text';
+    content?: {
+        text: string;
+    };
+    card?: {
+        config?: {
+            enable_forward?: boolean;
+            update_multi?: boolean;
+        };
+        elements: any[];
+        header: {
+            template: 'red'|'wathet'|'turquoise'|'green'|'yellow'|'orange'|'red'|'carmine'|'violet'|'purple'|'indigo'|'grey';
+            title: {
+                content: string;
+                tag: 'plain_text';
+            }
+        };
+    }
+};
+
+export type LarkReport = Report<'lark', {
+    message: LarkMessage;
+}>;
