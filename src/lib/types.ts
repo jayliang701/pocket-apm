@@ -26,6 +26,7 @@ export type Config = {
     notify: {
         lark?: {
             webhook: string;
+            secret?: string;
             producer?: string;     //飞书机器人消息内容生成JS脚本的路径
         }
         email?: {
@@ -132,7 +133,7 @@ export type EmailReport = Report<'email', {
 }>;
 
 export type LarkMessage = {
-    msg_type: 'interactive' | 'text';
+    msg_type: 'interactive' | 'text' | 'post' | 'image';
     content?: {
         text: string;
     };
