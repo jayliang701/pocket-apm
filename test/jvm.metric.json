@@ -1,0 +1,92 @@
+{
+    "memory": [
+        {
+            "isHeap": true,
+            "init": "268435456",
+            "max": "3817865216",
+            "used": "471295512",
+            "committed": "902299648"
+        },
+        {
+            "isHeap": false,
+            "init": "2555904",
+            "max": "-1",
+            "used": "95921760",
+            "committed": "101146624"
+        }
+    ],
+    "memoryPool": [
+        {
+            "type": "CODE_CACHE_USAGE",
+            "init": "2555904",
+            "max": "251658240",
+            "used": "12003648",
+            "committed": "12058624"
+        },
+        {
+            "type": "METASPACE_USAGE",
+            "init": "0",
+            "max": "-1",
+            "used": "73432696",
+            "committed": "77815808"
+        },
+        {
+            "type": "PERMGEN_USAGE",
+            "init": "0",
+            "max": "1073741824",
+            "used": "10485416",
+            "committed": "11272192"
+        },
+        {
+            "type": "NEWGEN_USAGE",
+            "init": "67108864",
+            "max": "1384120320",
+            "used": "411247968",
+            "committed": "718274560"
+        },
+        {
+            "type": "SURVIVOR_USAGE",
+            "init": "11010048",
+            "max": "21495808",
+            "used": "21237120",
+            "committed": "21495808"
+        },
+        {
+            "type": "OLDGEN_USAGE",
+            "init": "179306496",
+            "max": "2863661056",
+            "used": "38810424",
+            "committed": "162529280"
+        }
+    ],
+    "gc": [
+        {
+            "phase": "NEW",
+            "count": "0",
+            "time": "0"
+        },
+        {
+            "phase": "OLD",
+            "count": "0",
+            "time": "0"
+        }
+    ],
+    "time": "1659199555723",
+    "cpu": {
+        "usagePercent": 0.22367310679491528
+    },
+    "thread": {
+        "liveCount": "51",
+        "daemonCount": "47",
+        "peakCount": "54",
+        "runnableStateThreadCount": "18",
+        "blockedStateThreadCount": "0",
+        "waitingStateThreadCount": "14",
+        "timedWaitingStateThreadCount": "19"
+    },
+    "clazz": {
+        "loadedClassCount": "14782",
+        "totalUnloadedClassCount": "0",
+        "totalLoadedClassCount": "14782"
+    }
+}

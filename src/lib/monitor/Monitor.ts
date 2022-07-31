@@ -14,6 +14,8 @@ export default class Monitor<T extends TypedEvents = {}> extends TypedEventEmitt
 
     private _id: string;
 
+    private test2:number = 999;
+
     get id(): string {
         return this._id;
     }

@@ -1,6 +1,11 @@
+import TypedEventEmitter from "../../../utils/TypedEventEmitter";
 import { RPCServicePayload, SkywalkingConfig } from "../../../types";
 
-export default class ServiceHandler {
+export type ServiceHandlerEvents = {
+    update: (service: string, ...args: any[]) => Promise<void> | void;
+};
+
+export default class ServiceHandler extends TypedEventEmitter<ServiceHandlerEvents> {
 
     protected config: SkywalkingConfig;
 
@@ -29,6 +34,10 @@ export default class ServiceHandler {
 
     dispose() {
         
+    }
+
+    protected emitUpdate(...args: any[]) {
+        this.emit.apply(this, [ 'update', this.service ].concat(args));
     }
 
 }

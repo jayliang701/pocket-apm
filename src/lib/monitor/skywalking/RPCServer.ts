@@ -2,9 +2,8 @@
 
 import { Server, loadPackageDefinition, ServerCredentials } from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
-import { SkywalkingServerConfig } from 'src/lib/types';
+import { SkywalkingServerConfig } from '../../types';
 import path from 'path';
-import fs from 'fs/promises';
 import EventEmitter from 'events';
 
 type ServiceHandler = (service: { request: any }, callback: any) => void;

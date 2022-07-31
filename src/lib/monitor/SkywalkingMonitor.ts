@@ -4,6 +4,7 @@ import ServiceHandler from "./skywalking/handler/ServiceHandler";
 import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
 import fs from "fs/promises";
 import path from "path";
+import JVMMetricReporter from "../reporter/JVMMetricReport";
 
 export default class SkywalkingMonitor extends Monitor {
 
@@ -13,7 +14,14 @@ export default class SkywalkingMonitor extends Monitor {
         return this.config?.skywalking;
     }
 
+    private reporter: JVMMetricReporter = new JVMMetricReporter(this);
+
     protected setConfigDefaults() {
+        let { warn } = this.skywalkingConfig;
+        if (warn) {
+            if (!warn.timeLimit) warn.timeLimit = { durationMinutes: 0 };
+            warn.timeLimit.durationMinutes = warn.timeLimit.durationMinutes || 5;
+        }
         this.skywalkingConfig.metricLogPath = this.skywalkingConfig.metricLogPath || path.resolve(process.cwd(), `.metric/${this.skywalkingConfig.service}`);
     }
 
@@ -25,12 +33,16 @@ export default class SkywalkingMonitor extends Monitor {
 
         const handler = new Cls();
         handler.process = handler.process.bind(handler);
+        handler.on('update', this.onHandlerUpdate);
         handler.refresh(skywalkingConfig);
         handlers[handler.service] = handler;
     }
 
     private unRegisterServiceHandlers() {
         process.off('message', this.onRPCService);
+        for (let key in this.handlers) {
+            this.handlers[key].removeAllListeners('update');
+        }
         this.handlers = {};
     }
 
@@ -52,11 +64,15 @@ export default class SkywalkingMonitor extends Monitor {
         await super.dispose();
     }
 
-    onRPCService = async ({ service, method, request }: RPCServiceEventPayload) => {
+    private onRPCService = async ({ service, method, request }: RPCServiceEventPayload) => {
         const handler = this.handlers[service];
         if (!handler) return;
 
         handler.process({ method, request });
+    }
+
+    private onHandlerUpdate = async (service: string, ...args: any[]) => {
+        this.reporter.process.apply(this.reporter, [ service ].concat(args));
     }
 
 }

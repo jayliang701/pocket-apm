@@ -52,7 +52,7 @@ export default class LarkChannel extends NotifyChannel<LarkReport> {
             //success
             console.log(`Lark channel process success ---> ${report.title}  ${dayjs(report.createTime).format('YYYY-MM-DD HH:mm:ss')}`);
         } else {
-            throw new Error(`post message error. status: ${res.status}     statusText: ${res.statusText}     code: ${res.data?.StatusCode}     message: ${res.data?.StatusMessage}`);
+            throw new Error(`post message error. status: ${res.status}     statusText: ${res.statusText}     code: ${res.data?.code}     message: ${res.data?.msg}`);
         }
         
     }
