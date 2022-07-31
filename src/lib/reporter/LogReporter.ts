@@ -137,6 +137,15 @@ export default class LogReporter extends Reporter {
                                 }
                             };
                         })),
+                        // {
+
+                        //     tag: 'img',
+                        //     alt: {
+                        //         content: 'CPU使用率',
+                        //         tag: 'lark_md'
+                        //     },
+                        //     img_key: 'img_v2_450a7d47-826d-4bce-adb5-da3df32522dg',
+                        // },
                         {
                             tag: 'hr'
                         },

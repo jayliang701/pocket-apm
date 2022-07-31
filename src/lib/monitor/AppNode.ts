@@ -1,14 +1,8 @@
-import { AppConfig, Config, ProcessConfigReloadData, ProcessMessages } from "../types";
+import { AppConfig, Config, MainProcessMessage, ProcessConfigReloadData, ProcessMessages, SyncMainConfigMessage } from "../types";
 import Monitor from "./Monitor";
 import LogMonitor from "./LogMonitor";
 import ConfigedWorkerManager from "../utils/ConfigedWorkerManager";
 import SkywalkingMonitor from "./SkywalkingMonitor";
-import type { MainProcessEvent } from "../MainProcess";
-
-type MainProcessMessage = {
-    event: keyof MainProcessEvent;
-    data: MainProcessEvent[keyof MainProcessEvent];
-};
 
 const syncMainConfig = (): Promise<Config> => {
     return new Promise(async (resolve, reject) => {
@@ -16,7 +10,7 @@ const syncMainConfig = (): Promise<Config> => {
             if (event === 'sync_main_config') {
                 process.off('message', handler);
                 try {
-                    const conf: Config = JSON.parse(data.config);
+                    const conf: Config = (data as SyncMainConfigMessage).config;
                     resolve(conf);
                 } catch (err) {
                     reject(err);
@@ -24,7 +18,30 @@ const syncMainConfig = (): Promise<Config> => {
             }
         }
         process.on('message', handler);
-        await sendToMainProcess('request_config', {});
+        try {
+            await sendToMainProcess('request_config', {});
+        } catch (err) {
+            reject(err);
+        }
+    })
+}
+
+const syncEnvVars = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+        const handler = ({ event } : MainProcessMessage) => {
+            if (event === 'sync_env_vars') {
+                process.off('message', handler);
+                setTimeout(() => {
+                    resolve();
+                }, 0);
+            }
+        }
+        process.on('message', handler);
+        try {
+            await sendToMainProcess('request_env_vars', {});
+        } catch (err) {
+            reject(err);
+        }
     })
 }
 
@@ -62,6 +79,7 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
     protected override async afterReload() {
 
         this.mainConfig = await syncMainConfig();
+        await syncEnvVars();
 
         const { name, log, skywalking } = this.config;
 
@@ -79,13 +97,11 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
 
         for (let workerId in this.workers) {
             const worker = this.workers[workerId];
-            if (worker instanceof LogMonitor) {
-                if (newHash[worker.id]) {
-                    remains.push(worker);
-                    delete newHash[worker.id];
-                } else {
-                    removes.push(worker);
-                }
+            if (newHash[worker.id]) {
+                remains.push(worker);
+                delete newHash[worker.id];
+            } else {
+                removes.push(worker);
             }
         }
 

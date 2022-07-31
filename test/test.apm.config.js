@@ -4,6 +4,14 @@ module.exports = {
     // privateIP?: string;
     skywalking: {
         service: 'demo1',
+        warn: {
+            timeLimit: {
+                durationMinutes: 5,  //每次预警时间间隔（分钟）
+            },
+            jvm: {
+                cpu: 0.1,  //0 ~ 100, N分钟 (timeLimit.durationMinutes) 内CPU平均使用率达到该值时将发出预警消息
+            }
+        }
         // metricLogPath: '/xxx/xxx/xx',   //记录metric数据的文件存放路径, 默认为 ${process.cwd()}/.metric/${service}
     },
     log: {

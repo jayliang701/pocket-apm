@@ -10,9 +10,10 @@ module.exports = {
     notify: {
         //飞书机器人消息推送
         lark: {
-            webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx',
-            // secret: 'xxxx',
-            // producer: '/my_path/lark_producer.js'
+            app_id: 'xxxx',
+            app_secret: 'xxxxx',
+            webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxx',
+            // secret: 'xxxxx',
         },
         //邮件推送
         email: {

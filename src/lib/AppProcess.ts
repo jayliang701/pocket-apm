@@ -1,16 +1,9 @@
-import { ProcessConfigReloadData, ProcessMessage, ProcessReportData, RPCServiceEventPayload, Worker } from "./types";
+import { AppProcessEvent, IAppProcess, MainProcessMessages, ProcessConfigReloadData, ProcessInvokePlatformData, ProcessMessage, ProcessReportData, RPCServiceEventPayload, Worker } from "./types";
 import cp, { ChildProcess } from 'child_process';
 import path from 'path';
 import TypedEventEmitter from "./utils/TypedEventEmitter";
-import { MainProcessEvent } from "./MainProcess";
 
-export type AppProcessEvent = {
-    app_config_reload: (data: ProcessConfigReloadData) => Promise<void> | void;
-    request_main_config: (appProcess: AppProcess) => Promise<void> | void;
-    report: (data: ProcessReportData) => Promise<void> | void;
-};
-
-export default class AppProcess extends TypedEventEmitter<AppProcessEvent> implements Worker {
+export default class AppProcess extends TypedEventEmitter<AppProcessEvent> implements Worker, IAppProcess {
 
     private configFile: string;
 
@@ -42,7 +35,7 @@ export default class AppProcess extends TypedEventEmitter<AppProcessEvent> imple
         }
     }
 
-    send(event: keyof MainProcessEvent, data: MainProcessEvent[keyof MainProcessEvent]): Promise<void> {
+    send(event: keyof MainProcessMessages, data: MainProcessMessages[keyof MainProcessMessages]): Promise<void> {
         return new Promise((resolve, reject) => {
             if (!this.proc) {
                 console.warn('can\'t send message to child process.');
@@ -66,12 +59,16 @@ export default class AppProcess extends TypedEventEmitter<AppProcessEvent> imple
     }
 
     onMessageHandler = async (message: ProcessMessage) => {
-        if (message.event === 'reload') {
+        if (message.event === 'report') {
+            this.emit('report', message.data as ProcessReportData);
+        } else if (message.event === 'reload') {
             this.emit('app_config_reload', message.data as ProcessConfigReloadData);
         } else if (message.event === 'request_config') {
             this.emit('request_main_config', this);
-        } else if (message.event === 'report') {
-            this.emit('report', message.data as ProcessReportData);
+        } else if (message.event === 'request_env_vars') {
+            this.emit('request_env_vars', this);
+        } else if (message.event === 'invoke_platform') {
+            this.emit('invoke_platform', this, message.data as ProcessInvokePlatformData);
         }
     }
 

@@ -20,12 +20,7 @@ export default class LogMonitor extends Monitor {
 
     private logWatchers: Record<string, LogWatcher> = {};
 
-    private reporter: LogReporter;
-
-    constructor(appNode: AppNode, id?:string) {
-        super(appNode, id);
-        this.reporter = new LogReporter(this);
-    }
+    private reporter: LogReporter = new LogReporter(this);
 
     override async start() {
         await this.refresh();

@@ -7,7 +7,7 @@ export type TypedEvents = {
 export default class TypedEventEmitter<T extends TypedEvents = {}> extends EventEmitter {
 
     override removeAllListeners<E extends keyof T>(eventName: E): this {
-        return super.addListener.apply(this, [ eventName ]);
+        return super.removeAllListeners.apply(this, [ eventName ]);
     }
 
     override addListener<E extends keyof T>(eventName: E, listener: T[E]): this {
