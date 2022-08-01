@@ -4,7 +4,8 @@ import ServiceHandler from "./skywalking/handler/ServiceHandler";
 import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
 import fs from "fs/promises";
 import path from "path";
-import JVMMetricReporter from "../reporter/JVMMetricReport";
+import JavaProcessLoggingHandler from "./skywalking/handler/JavaProcessLoggingHandler";
+import SkywalkingReporter from "../reporter/SkywalkingReporter";
 
 export default class SkywalkingMonitor extends Monitor {
 
@@ -14,7 +15,7 @@ export default class SkywalkingMonitor extends Monitor {
         return this.config?.skywalking;
     }
 
-    private reporter: JVMMetricReporter = new JVMMetricReporter(this);
+    private reporter: SkywalkingReporter = new SkywalkingReporter(this);
 
     protected setConfigDefaults() {
         let { warn } = this.skywalkingConfig;
@@ -29,8 +30,6 @@ export default class SkywalkingMonitor extends Monitor {
         const { skywalkingConfig, handlers } = this;
         if (!skywalkingConfig) return;
 
-        process.on('message', this.onRPCService);
-
         const handler = new Cls();
         handler.process = handler.process.bind(handler);
         handler.on('update', this.onHandlerUpdate);
@@ -39,14 +38,15 @@ export default class SkywalkingMonitor extends Monitor {
     }
 
     private unRegisterServiceHandlers() {
-        process.off('message', this.onRPCService);
         for (let key in this.handlers) {
             this.handlers[key].removeAllListeners('update');
+            this.handlers[key].dispose();
         }
         this.handlers = {};
     }
 
     override async start() {
+        process.on('message', this.onRPCService);
         await this.refresh();
     }
 
@@ -56,10 +56,15 @@ export default class SkywalkingMonitor extends Monitor {
         await fs.mkdir(this.skywalkingConfig.metricLogPath, { recursive: true });
 
         this.unRegisterServiceHandlers();
+
         this.registerServiceHandler(JavaProcessMetricHandler);
+        if (this.skywalkingConfig.log) {
+            this.registerServiceHandler(JavaProcessLoggingHandler);
+        }
     }
 
     async dispose() {
+        process.off('message', this.onRPCService);
         this.unRegisterServiceHandlers();
         await super.dispose();
     }

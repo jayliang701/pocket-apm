@@ -1,12 +1,13 @@
 
 
-import { Server, loadPackageDefinition, ServerCredentials } from '@grpc/grpc-js';
+import { Server, loadPackageDefinition, ServerCredentials, ServerReadableStream } from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import { SkywalkingServerConfig } from '../../types';
 import path from 'path';
 import EventEmitter from 'events';
+import { Http2ServerCallStream } from '@grpc/grpc-js/build/src/server-call';
 
-type ServiceHandler = (service: { request: any }, callback: any) => void;
+type ServiceHandler = (service: { request: any, call?: Http2ServerCallStream<any, any> }, callback: any) => void;
 
 const protoOptions = {
     keepCase: true,
@@ -21,6 +22,14 @@ const loadMetricProto = (filename: string): any => {
     const proto = loadPackageDefinition(packageDefinition);
     return proto;
 }
+
+async function readableToString2(readable) {
+    let result = '';
+    for await (const chunk of readable) {
+      result += chunk;
+    }
+    return result;
+  }
 
 export default class RPCServer extends Server {
 
@@ -78,6 +87,7 @@ export default class RPCServer extends Server {
             this.config = { ...config };
 
             if (!restart) {
+                resolve();
                 return;
             }
 
@@ -113,8 +123,9 @@ export default class RPCServer extends Server {
                 return;
             }
 
-            this.tryShutdown((err => {
+            this.tryShutdown(() => {
                 this.running = false;
+                const err = false;
                 if (err) {
                     console.error('RPC server try to shutdown fail --> ', err);
                     console.warn('force shutdown RPC server.');
@@ -124,7 +135,7 @@ export default class RPCServer extends Server {
                     console.log('RPC server is stopped.');
                     resolve();
                 }
-            }));
+            });
         });
     }
 
@@ -135,13 +146,32 @@ export default class RPCServer extends Server {
         this.shutdown();
     }
 
-    private createServiceHandler (serviceName: string, methodName: string): ServiceHandler {
-        return ({ request }, callback) => {
-            let app: string;
-            if (request) {
-                app = request.service;
+    private createServiceHandler (serviceName: string, methodName: string, enabled: boolean = false): ServiceHandler {
+        return (message, callback) => {
+            if (enabled) {
+                const { request, call } = message;
+                let app: string;
+                if (request) {
+                    app = request.service;
+                } else if (call) {
+                    call.receiveUnaryMessage('binary').then((payload: any) => {
+                        if (payload === undefined) {
+                            payload = [...call['messagesToPush']];
+                        }
+                        if (payload instanceof Array) {
+                            for (const req of payload) {
+                                if (!req) continue;
+                                this.dispatcher.emit('service', { app: req.service, service: serviceName, method: methodName, request: req });
+                            }
+                        } else {
+                            this.dispatcher.emit('service', { app: payload.service, service: serviceName, method: methodName, request: payload });
+                        }
+                        callback(null, { commands: [] });
+                    });
+                    return;
+                }
+                this.dispatcher.emit('service', { app, service: serviceName, method: methodName, request });
             }
-            this.dispatcher.emit('service', { app, service: serviceName, method: methodName, request });
             callback(null, { commands: [] });
         }
     }
@@ -155,9 +185,10 @@ export default class RPCServer extends Server {
         const managementProto = loadMetricProto('Management.proto');
         const metricExportProto = loadMetricProto('MetricExport.proto');
         const profileProto = loadMetricProto('Profile.proto');
+        const loggingProto = loadMetricProto('Logging.proto');
 
         this.addService(metricProto.skywalking.v3.JVMMetricReportService.service, {
-            collect: this.createServiceHandler('JVMMetricReportService', 'collect'),
+            collect: this.createServiceHandler('JVMMetricReportService', 'collect', true),
         });
 
         this.addService(profileProto.skywalking.v3.ProfileTask.service, {
@@ -191,6 +222,10 @@ export default class RPCServer extends Server {
         this.addService(metricExportProto.MetricExportService.service, {
             export: this.createServiceHandler('MetricExportService', 'export'),
             subscription: this.createServiceHandler('MetricExportService', 'subscription'),
+        });
+
+        this.addService(loggingProto.skywalking.v3.LogReportService.service, {
+            collect: this.createServiceHandler('LogReportService', 'collect', this.config.enableLogging ? true : false),
         });
     }
 }

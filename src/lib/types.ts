@@ -8,11 +8,6 @@ export type Log = {
     lines: string[];
 };
 
-export type MailAlert = {
-    log: string[];
-    time: string;
-};
-
 export type SmtpConfig = {
     pool?: boolean;
     host: string;
@@ -66,7 +61,13 @@ export type SingleLogConfig = {
 export type SkywalkingServerConfig = {
     host: string;
     port: number;
+    enableLogging?: boolean;
 };
+
+export type SkywalkingLoggingConfig = {
+    level: string;   //ERROR, INFO, WARN, DEBUG
+    filter?: (log: SkywalkingLoggingCollectData, level: LogLevel) => boolean;
+} & Pick<LogConfig, 'throttle'>;
 
 export type SkywalkingConfig = {
     service: string;
@@ -78,7 +79,8 @@ export type SkywalkingConfig = {
         jvm?: {
             cpu?: number;   //avg CPU usage warn line. range: 0 - 100 (%)
         }
-    }
+    },
+    log?: SkywalkingLoggingConfig;
 };
 
 export type AppConfig = {
@@ -181,13 +183,14 @@ export type MetricUpdate = {
     service: string;
     serviceInstance: string;
     metricLog: string;
-    timeRange: [ number, number ],
+    timeRange: [ number, number ];
 }
 
-export type ProcessMetric = {
-    time: number;
-    cpu: number;
-};
+export type ProcessLoggingAlert = {
+    service: string;
+    serviceInstance: string;
+    alerts: Log[];
+}
 
 export type ChannelType = 'email' | 'lark';
 
@@ -240,6 +243,27 @@ export type SkywalkingJVMMetric = {
     thread: JVMThread;
 };
 
+export type SkywalkingLoggingCollectData = {
+    service: string;
+    serviceInstance: string;
+    timestamp: string;
+    endpoint: string;
+    body: {
+        type: 'TEXT' | 'JSON' | 'YAML';
+        text?: {
+            text: string;
+        },
+        json?: any;
+        yaml?: any;
+        content: 'text' | 'json' | 'yaml';
+    },
+    tags: {
+        data: { key: string, value: string }[];
+    }
+};
+
+export type LogLevel = 'ERROR' | 'INFO' | 'WARN' | 'DEBUG';
+
 export type JVMMemory = {
     isHeap: boolean;
     init: string;
@@ -258,7 +282,7 @@ export type JVMThread = {
     timedWaitingStateThreadCount: string;
 };
 
-export type ProcessMetricData = {
+export type SkywalkingJVMMetricCollectData = {
     service: string;
     serviceInstance: string;
     metrics: SkywalkingJVMMetric[];

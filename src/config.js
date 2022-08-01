@@ -5,6 +5,7 @@ module.exports = {
     skywalking: {
         port: 11800,
         host: '0.0.0.0',
+        // enableLogging: false,   //默认false, 是否开启skywalking日志收集, 若服务配置里需要启用skywalking日志, 则需设置 true
     },
     //推送配置
     notify: {

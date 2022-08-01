@@ -3,7 +3,7 @@ import ServiceHandler from "./ServiceHandler";
 import fs from 'fs/promises';
 import path from 'path';
 import { buildFilledString } from "../../../utils";
-import { JVMMetric, MetricUpdate, ProcessMetricData } from "../../../types";
+import { JVMMetric, MetricUpdate, SkywalkingJVMMetricCollectData } from "../../../types";
 import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE } from "../../../../consts";
 
 export default class JavaProcessMetricHandler extends ServiceHandler {
@@ -23,7 +23,7 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
     recordsMap: Map<string, JVMMetric[]> = new Map();
     minRecordsMap: Map<string, JVMMetric[]> = new Map();
 
-    collect({ metrics, serviceInstance }: ProcessMetricData): void {
+    collect({ metrics, serviceInstance }: SkywalkingJVMMetricCollectData): void {
         let records = this.recordsMap.get(serviceInstance);
         if (!records) {
             records = [];
@@ -40,7 +40,7 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
             let ts = Number(time);
             let mins = Math.floor(ts / MINUTE) * MINUTE;
             if (ts < this.lastTime) {
-                console.warn('duplicate time metric ---> ', dayjs(ts).format('HH:mm'));
+                // console.warn('duplicate time metric ---> ', dayjs(ts).format('HH:mm'));
                 return;
             }
             this.lastTime = ts;
@@ -113,9 +113,16 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
         const d = 1024 * 1024;
 
         let offset = 0;
+        const timeRange: [ number, number ] = [ 0, 0 ];
         for (let i = 0; i < removeNum; i ++) {
             const metric = metrics[i];
             const { values, time } = metric;
+            if (i === 0) {
+                timeRange[0] = time;
+            } 
+            if (i === removeNum - 1) {
+                timeRange[1] = time;
+            }
 
             const cpu = buildFilledString(values.cpu.toFixed(4), METRIC_PECT_VALUE_LEN, '0');
             const heapMemory = buildFilledString(String(Math.round(values.heapMemory / d)), METRIC_MEMORY_VALUE_LEN, '0');
@@ -137,7 +144,7 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
                 service: this.config.service,
                 serviceInstance,
                 metricLog: file,
-                timeRange: [ metrics[0].time, metrics[removeNum - 1].time ],
+                timeRange,
             };
             this.emitUpdate(payload);
         }).catch(err => {

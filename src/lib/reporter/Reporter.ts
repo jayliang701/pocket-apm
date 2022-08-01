@@ -1,5 +1,5 @@
 import type { IMonitor } from "../monitor/Monitor";
-import type { AppConfig, Config, Report, SkywalkingConfig } from "../types";
+import type { AppConfig, Config, Report } from "../types";
 
 export default abstract class Reporter {
 
@@ -7,10 +7,6 @@ export default abstract class Reporter {
 
     protected get config(): AppConfig {
         return this.monitor?.config;
-    }
-
-    protected get skywalkingConfig(): SkywalkingConfig {
-        return this.config?.skywalking;
     }
 
     protected get mainConfig(): Config {
