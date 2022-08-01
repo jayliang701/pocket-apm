@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
-import { EmailReport, JVMMetric, JVMMetricValues, LarkMessage, LarkReport, Log, MetricUpdate, Report } from "../types";
-import Reporter from "./Reporter";
-import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE, TIMESTAMP_LEN } from "../../consts";
-import { createStream } from '../utils/readlines';
-import { IMonitor } from "../monitor/Monitor";
-import { uploadImage } from "../platform/Lark";
+import { EmailReport, JVMMetric, JVMMetricValues, LarkMessage, LarkReport, Log, MetricUpdate, Report } from "../../types";
+import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE, TIMESTAMP_LEN } from "../../../consts";
+import { createStream } from '../../utils/readlines';
+import { IMonitor } from "../../monitor/Monitor";
+import { uploadImage } from "../../platform/Lark";
+import SkywalkingReporterHandler from "./SkywalkingReporterHandler";
 
 const ChartJsImage = require('chartjs-to-image');
 
@@ -317,7 +317,7 @@ class ProcessMetrics {
     }
 };
 
-export default class JVMMetricReporter extends Reporter {
+export default class JVMMetricReporter extends SkywalkingReporterHandler {
 
     private lastProcessTime: number = Math.floor(Date.now() / MINUTE) * MINUTE;
 
@@ -341,15 +341,7 @@ export default class JVMMetricReporter extends Reporter {
         // });
     }
 
-    async process(service: string, ...args: any[]) {
-        // this.sendReports(this.buildReports(watcherId, alerts));
-        const func = this['process_' + service];
-        if (func) {
-            await func.apply(this, args);
-        }
-    }
-
-    private async process_JVMMetricReportService(data: MetricUpdate) {
+    override async process(data: MetricUpdate) {
         try {
             if (!this.skywalkingConfig) return;
 
@@ -359,8 +351,9 @@ export default class JVMMetricReporter extends Reporter {
             if (warn) {
                 const { timeLimit } = warn;
                 const passedMins = (timeRange[1] - this.lastProcessTime) / MINUTE;
-                console.log('passedMins ---> ', passedMins)
+                console.log('passedMins ---> ', passedMins, this.lastProcessTime)
                 if (passedMins >= timeLimit.durationMinutes) {
+                    this.lastProcessTime = timeRange[1];
                     const metrics: ProcessMetrics = await readFileFromEnd(metricLog, timeLimit.durationMinutes);
                     if (metrics.length >= timeLimit.durationMinutes) {
                         const avgMetric = metrics.avg();
@@ -369,7 +362,6 @@ export default class JVMMetricReporter extends Reporter {
                             await this.sendReports(reports);
                         }
                     }
-                    console.log(metrics.length);
                 }
             }
             
