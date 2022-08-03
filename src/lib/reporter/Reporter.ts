@@ -1,7 +1,7 @@
 import type { IMonitor } from "../monitor/Monitor";
-import type { AppConfig, Config, Report } from "../types";
+import type { AppConfig, Config, Refreshable, Report } from "../types";
 
-export default abstract class Reporter {
+export default abstract class Reporter implements Refreshable {
 
     protected monitor: IMonitor;
 
@@ -39,6 +39,14 @@ export default abstract class Reporter {
         for (const report of reports) {
             this.sendReport(report);
         }
+    }
+
+    async refresh() {
+
+    }
+    
+    async dispose() {
+        
     }
 
 }

@@ -27,4 +27,16 @@ export default class SkywalkingReporter extends Reporter {
             await handler.process.apply(handler, args);
         }
     }
+
+    override async refresh() {
+        for (let key in this.handlers) {
+            await this.handlers[key].refresh();
+        }
+    }
+
+    override async dispose() {
+        for (let key in this.handlers) {
+            await this.handlers[key].dispose();
+        }
+    }
 }

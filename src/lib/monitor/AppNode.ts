@@ -3,6 +3,7 @@ import Monitor from "./Monitor";
 import LogMonitor from "./LogMonitor";
 import ConfigedWorkerManager from "../utils/ConfigedWorkerManager";
 import SkywalkingMonitor from "./SkywalkingMonitor";
+import { setDefaultLogConfig } from "../../consts";
 
 const syncMainConfig = (): Promise<Config> => {
     return new Promise(async (resolve, reject) => {
@@ -70,6 +71,11 @@ export default class AppNode extends ConfigedWorkerManager<AppConfig, Monitor> {
         if (!config.name) {
             throw new Error('invalid config content, need "name" property.')
         }
+    }
+
+    protected override setConfigDefaults() {
+        const { config } = this;
+        config.log = setDefaultLogConfig(config.log);
     }
 
     async refresh() {

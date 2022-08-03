@@ -40,17 +40,22 @@ export type Config = {
     }
 }
 
+export type ThrottleConfig = {
+    maxTimesInWindow: number;  //在一个时间窗口内最多执行次数
+    windowTime: number;   //秒, 时间窗口长度
+    durationPerTime: number; //秒, 每次执行的时间间隔
+};
+
+export type LogThrottleConfig = {
+    delay: number;   //秒, 收到目标日志后延迟多少秒发出预警通知
+    maxLogsPerAlert: number;   //每次通知最多包含的日志条数
+} & ThrottleConfig;
+
 export type LogConfig = {
     dateTimeFilter: RegExp | ((log: string) => string | undefined);
     logFilter: RegExp | ((log: string) => boolean);
     errorLogFilter: RegExp | ((log: string) => boolean);
-    throttle: {
-        delay: number;   //seconds
-        maxLogsPerAlert: number;   //count
-        // maxTimesInWindow: number;  //count
-        // windowTime: number;   //seconds
-        check?: (log: string[]) => boolean;
-    },
+    throttle: LogThrottleConfig;
     watch: (string | SingleLogConfig)[];
 };
 
@@ -125,11 +130,14 @@ export interface IAppProcess {
     send: (event: keyof MainProcessMessages, data: MainProcessMessages[keyof MainProcessMessages]) => Promise<void>;
 };
 
-export interface Worker {
-    get id(): string;
-    start(): Promise<void>;
+export interface Refreshable {
     refresh(): Promise<void>;
     dispose(): Promise<void>;
+}
+
+export interface Worker extends Refreshable {
+    get id(): string;
+    start(): Promise<void>;
 }
 
 export type RPCServiceRequest = {

@@ -12,6 +12,7 @@ module.exports = {
                 cpu: 70.00,  //0 ~ 100, N分钟 (timeLimit.durationMinutes) 内CPU平均使用率达到该值时将发出预警消息
             }
         },
+        //开启 skywalking 日志收集
         log: {
             level: 'ERROR',   //目标日志等级, 支持多个类型, 如 'ERROR|WARN', 默认 ERROR
             /* 自定义过滤函数 
@@ -24,8 +25,9 @@ module.exports = {
             throttle: {
                 delay: 5,   // 秒, 表示每次通知间隔是几秒, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到30秒后一并发送通知
                 maxLogsPerAlert: 5,   // 每次通知最多包括几条日志
-                // maxTimesInWindow: 1,  //在时间窗口中最多发送几次
-                // windowTime: 60 * 60,  // 秒，时间窗口
+                // maxTimesInWindow: 1,  //在时间窗口中最多发送几次, 默认2次
+                // windowTime: 60 * 60,  //秒，时间窗口, 默认1小时
+                // durationPerTime: 20 * 60,  //秒, 每次通知的时间间隔, 默认20分钟
             }
         }
         // metricLogPath: '/xxx/xxx/xx',   //记录metric数据的文件存放路径, 默认为 ${process.cwd()}/.metric/${service}
@@ -70,8 +72,9 @@ module.exports = {
         throttle: {
             delay: 5,   // 秒, 表示每次通知间隔是几秒, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到30秒后一并发送通知
             maxLogsPerAlert: 10,   // 每次通知最多包括几条日志
-            // maxTimesInWindow: 1,  //在时间窗口中最多发送几次
-            // windowTime: 60 * 60,  // 秒，时间窗口
+            // maxTimesInWindow: 1,  //在时间窗口中最多发送几次, 默认2次
+            // windowTime: 60 * 60,  //秒，时间窗口, 默认1小时
+            // durationPerTime: 20 * 60,  //秒, 每次通知的时间间隔, 默认20分钟
         },
         watch: [
             //支持字符串类型, 直接设置日志文件路径, 默认使用全局的日志过滤器配置

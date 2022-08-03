@@ -63,9 +63,9 @@ export default class ConfigWatcher<T> {
         try {
             const mod = eval(content);
             this.checkConfigFormat(mod);
+            this.config = mod;
             this.setConfigDefaults();
             console.log('config reloaded ---> ', this.configFile);
-            this.config = mod;
 
             await this.afterReload();
 
