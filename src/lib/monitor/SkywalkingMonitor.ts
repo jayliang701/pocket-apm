@@ -3,9 +3,9 @@ import { RPCServiceEventPayload, SkywalkingConfig } from "../types";
 import ServiceHandler from "./skywalking/handler/ServiceHandler";
 import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
 import fs from "fs/promises";
-import path from "path";
 import JavaProcessLoggingHandler from "./skywalking/handler/JavaProcessLoggingHandler";
 import SkywalkingReporter from "../reporter/SkywalkingReporter";
+import { setDefaultSkywalkingConfig } from "../../consts";
 
 export default class SkywalkingMonitor extends Monitor {
 
@@ -18,12 +18,7 @@ export default class SkywalkingMonitor extends Monitor {
     private reporter: SkywalkingReporter = new SkywalkingReporter(this);
 
     protected setConfigDefaults() {
-        let { warn } = this.skywalkingConfig;
-        if (warn) {
-            if (!warn.timeLimit) warn.timeLimit = { durationMinutes: 0 };
-            warn.timeLimit.durationMinutes = warn.timeLimit.durationMinutes || 5;
-        }
-        this.skywalkingConfig.metricLogPath = this.skywalkingConfig.metricLogPath || path.resolve(process.cwd(), `.metric/${this.skywalkingConfig.service}`);
+        setDefaultSkywalkingConfig(this.skywalkingConfig);
     }
 
     private registerServiceHandler(Cls: typeof ServiceHandler) {
@@ -57,15 +52,20 @@ export default class SkywalkingMonitor extends Monitor {
 
         this.unRegisterServiceHandlers();
 
+        await this.reporter.refresh();
+
         this.registerServiceHandler(JavaProcessMetricHandler);
         if (this.skywalkingConfig.log) {
             this.registerServiceHandler(JavaProcessLoggingHandler);
         }
+
+        await super.refresh();
     }
 
     async dispose() {
         process.off('message', this.onRPCService);
         this.unRegisterServiceHandlers();
+        await this.reporter.dispose();
         await super.dispose();
     }
 

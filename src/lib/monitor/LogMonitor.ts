@@ -1,7 +1,6 @@
 import LogReporter from "../reporter/LogReporter";
 import { Log, LogConfig, SingleLogConfig } from "../types";
 import LogWatcher from "../utils/LogWatcher";
-import AppNode from "./AppNode";
 import Monitor from "./Monitor";
 
 type SharedKeys = { [P in keyof Omit<LogConfig, 'watch' | 'throttle'>]: true };
@@ -27,7 +26,9 @@ export default class LogMonitor extends Monitor {
     }
 
     override async refresh() {
+        await this.reporter.refresh();
         await this.updateLogWatchers();
+        await super.refresh();
     }
 
     override async dispose() {

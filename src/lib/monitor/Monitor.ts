@@ -8,13 +8,15 @@ export interface IMonitor {
     readonly mainConfig: Config;
 }
 
-export default class Monitor<T extends TypedEvents = {}> extends TypedEventEmitter<T> implements Worker, IMonitor {
+export type MonitorEvents<T extends TypedEvents> = {
+    refresh: (monitor: IMonitor) => Promise<void> | void;
+} & T;
+
+export default class Monitor<T extends MonitorEvents<{}> = MonitorEvents<{}>> extends TypedEventEmitter<T> implements Worker, IMonitor {
 
     protected appNode: AppNode;
 
     private _id: string;
-
-    private test2:number = 999;
 
     get id(): string {
         return this._id;
@@ -40,8 +42,8 @@ export default class Monitor<T extends TypedEvents = {}> extends TypedEventEmitt
         
     }
 
-    async refresh() {
-
+    async refresh() {      
+        (this as TypedEventEmitter<MonitorEvents<{}>>).emit('refresh', this);
     }
 
     async dispose() {

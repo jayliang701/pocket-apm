@@ -1,8 +1,6 @@
 import EventEmitter from 'events';
 
-export type TypedEvents = {
-    [name: string | symbol]: (...args: any[]) => Promise<void> | void;
-};
+export type TypedEvents = Record<string | symbol, (...args: any[]) => (Promise<void> | void)>;
 
 export default class TypedEventEmitter<T extends TypedEvents = {}> extends EventEmitter {
 
