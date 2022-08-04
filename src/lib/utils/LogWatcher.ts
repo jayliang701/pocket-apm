@@ -164,7 +164,7 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
                 } catch (err) {
                     console.error(err);
                 }
-            }, (this.config?.throttle?.delay) * 1000);
+            }, (this.config?.debounce?.delay) * 1000);
         }
     }
 

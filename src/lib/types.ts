@@ -46,18 +46,20 @@ export type ThrottleConfig = {
     durationPerTime: number; //秒, 每次执行的时间间隔
 };
 
-export type LogThrottleConfig = {
-    delay: number;   //秒, 收到目标日志后延迟多少秒发出预警通知
-    maxLogsPerAlert: number;   //每次通知最多包含的日志条数
-} & ThrottleConfig;
+export type LogBasicConfig = {
+    debounce: {
+        delay: number;   //秒, 节流, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到最后一并发送通知
+        maxNum: number;   //最多保留几条日志
+    };
+    throttle: ThrottleConfig;
+};
 
 export type LogConfig = {
     dateTimeFilter: RegExp | ((log: string) => string | undefined);
     logFilter: RegExp | ((log: string) => boolean);
     errorLogFilter: RegExp | ((log: string) => boolean);
-    throttle: LogThrottleConfig;
     watch: (string | SingleLogConfig)[];
-};
+} & LogBasicConfig;
 
 export type SingleLogConfig = {
     file: string;
@@ -72,7 +74,7 @@ export type SkywalkingServerConfig = {
 export type SkywalkingLoggingConfig = {
     level: string;   //ERROR, INFO, WARN, DEBUG
     filter?: (log: SkywalkingLoggingCollectData, level: LogLevel) => boolean;
-} & Pick<LogConfig, 'throttle'>;
+} & LogBasicConfig;
 
 export type SkywalkingConfig = {
     service: string;

@@ -22,9 +22,11 @@ module.exports = {
                 return true;   //true -> pick,  false -> ignore
             },
             */
+            debounce: {
+                delay: 5,   //秒, 节流, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到最后一并发送通知
+                maxNum: 5,   //最多保留几条日志
+            },
             throttle: {
-                delay: 5,   // 秒, 表示每次通知间隔是几秒, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到30秒后一并发送通知
-                maxLogsPerAlert: 5,   // 每次通知最多包括几条日志
                 // maxTimesInWindow: 1,  //在时间窗口中最多发送几次, 默认2次
                 // windowTime: 60 * 60,  //秒，时间窗口, 默认1小时
                 // durationPerTime: 20 * 60,  //秒, 每次通知的时间间隔, 默认20分钟
@@ -69,9 +71,11 @@ module.exports = {
             // return true / false;
         },
         */
+        debounce: {
+            delay: 5,   //秒, 节流, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到最后一并发送通知
+            maxNum: 5,   //最多保留几条日志
+        },
         throttle: {
-            delay: 5,   // 秒, 表示每次通知间隔是几秒, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到30秒后一并发送通知
-            maxLogsPerAlert: 10,   // 每次通知最多包括几条日志
             // maxTimesInWindow: 1,  //在时间窗口中最多发送几次, 默认2次
             // windowTime: 60 * 60,  //秒，时间窗口, 默认1小时
             // durationPerTime: 20 * 60,  //秒, 每次通知的时间间隔, 默认20分钟

@@ -31,14 +31,9 @@ export default class LogReporter extends Reporter {
 
         let txtLogs: string[] = [];
         let htmlLogs: string = '';
-        let i = 0;
         for (let log of alerts) {
             txtLogs.push(log.lines.join('\n'));
             if (this.enableEmailChannel) htmlLogs += `<pre style="background: #eeeeee; padding: 12px;"><code>${log.lines.join('<br/>')}</code></pre>\n`;
-            i++;
-            if (i >= (config.log.throttle.maxLogsPerAlert - 1)) {
-                break;
-            }
         }
 
         if (this.enableEmailChannel) {
@@ -49,7 +44,7 @@ export default class LogReporter extends Reporter {
                 `服务器(内网IP): ${config.privateIP || 'N/A'}`,
                 `日志文件: ${watcherId}`,
                 ``,
-                `相关内容 (最多显示 ${config.log.throttle.maxLogsPerAlert} 个事件): `,
+                `相关内容 (最多显示 ${config.log.debounce.maxNum} 个事件): `,
                 txtLogs.join('\n\n'),
             ];
             let htmlBody = `
@@ -59,7 +54,7 @@ export default class LogReporter extends Reporter {
                 <div>服务器(内网IP): ${config.privateIP || 'N/A'}</div>
                 <div>日志文件: ${watcherId}</div>
                 <div>
-                <div>相关内容 (最多显示 ${config.log.throttle.maxLogsPerAlert} 个事件): </div>
+                <div>相关内容 (最多显示 ${config.log.debounce.maxNum} 个事件): </div>
                 ${htmlLogs}
                 </div>
             `;

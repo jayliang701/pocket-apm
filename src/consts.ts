@@ -1,5 +1,5 @@
 import path from "path";
-import { LogConfig, LogThrottleConfig, SkywalkingConfig } from "./lib/types";
+import { LogConfig, LogBasicConfig, SkywalkingConfig, ThrottleConfig } from "./lib/types";
 
 export const MINUTE = 60 * 1000;
 
@@ -24,33 +24,52 @@ export const METRIC_LOG_LINE_LEN = TIMESTAMP_LEN + SPACE_LEN +
 
 export const ENV_VAR_LARK_ACCESS_TOKEN = 'lark@acess_token';
 
-
-export const DEFAULT_LOG_THROTTLE_CONFIG: LogThrottleConfig = {
-    delay: 5,
-    maxLogsPerAlert: 5,
+export const DEFAULT_THROTTLE_CONFIG: ThrottleConfig = {
     maxTimesInWindow: 2,
     windowTime: 3600,
     durationPerTime: 1200,
 }
 
-export const setDefaultLogThrottleConfig = (config: LogThrottleConfig | undefined): LogThrottleConfig => {    
+export const DEFAULT_LOG_BASIC_CONFIG: LogBasicConfig = {
+    debounce: {
+        delay: 5,
+        maxNum: 5,
+    },
+    throttle: {
+        ...DEFAULT_THROTTLE_CONFIG,
+    }
+}
+
+export function setDefaultLogBasicConfig<T extends LogBasicConfig>(config: T | undefined): T {    
     if (!config) {
-        config = { ...DEFAULT_LOG_THROTTLE_CONFIG };
+        config = { ...DEFAULT_LOG_BASIC_CONFIG } as T;
     }
-    if (!config.hasOwnProperty('delay')) {
-        config.delay = DEFAULT_LOG_THROTTLE_CONFIG.delay;
+    if (!config.debounce) {
+        config.debounce = { ...DEFAULT_LOG_BASIC_CONFIG.debounce };
     }
-    if (!config.hasOwnProperty('maxLogsPerAlert')) {
-        config.maxLogsPerAlert = DEFAULT_LOG_THROTTLE_CONFIG.maxLogsPerAlert;
+    if (config.debounce.delay === null || config.debounce.delay === undefined) {
+        config.debounce.delay = DEFAULT_LOG_BASIC_CONFIG.debounce.delay;
     }
-    if (!config.hasOwnProperty('maxTimesInWindow')) {
-        config.maxTimesInWindow = DEFAULT_LOG_THROTTLE_CONFIG.maxTimesInWindow;
+    if (!config.debounce.maxNum === null || config.debounce.maxNum === undefined) {
+        config.debounce.maxNum = DEFAULT_LOG_BASIC_CONFIG.debounce.maxNum;
     }
-    if (!config.hasOwnProperty('windowTime')) {
-        config.windowTime = DEFAULT_LOG_THROTTLE_CONFIG.windowTime;
+
+    config.throttle = setDefaultThrottleConfig(config.throttle);
+    return config;
+}
+
+export const setDefaultThrottleConfig = (config: ThrottleConfig | undefined): ThrottleConfig => {    
+    if (!config) {
+        config = { ...DEFAULT_THROTTLE_CONFIG };
     }
-    if (!config.hasOwnProperty('durationPerTime')) {
-        config.durationPerTime = DEFAULT_LOG_THROTTLE_CONFIG.durationPerTime;
+    if (config.maxTimesInWindow === null || config.maxTimesInWindow === undefined) {
+        config.maxTimesInWindow = DEFAULT_THROTTLE_CONFIG.maxTimesInWindow;
+    }
+    if (config.windowTime === null || config.windowTime === undefined) {
+        config.windowTime = DEFAULT_THROTTLE_CONFIG.windowTime;
+    }
+    if (config.durationPerTime === null || config.durationPerTime === undefined) {
+        config.durationPerTime = DEFAULT_THROTTLE_CONFIG.durationPerTime;
     }
     return config;
 }
@@ -58,7 +77,7 @@ export const setDefaultLogThrottleConfig = (config: LogThrottleConfig | undefine
 export const setDefaultLogConfig = (config: LogConfig | undefined): LogConfig | undefined => {
     if (!config) return undefined;
     
-    config.throttle = setDefaultLogThrottleConfig(config.throttle);
+    setDefaultLogBasicConfig(config);
     return config;
 }
 
@@ -72,8 +91,8 @@ export const setDefaultSkywalkingConfig = (config: SkywalkingConfig | undefined)
     }
     config.metricLogPath = config.metricLogPath || path.resolve(process.cwd(), `.metric/${config.service}`);
 
-    if (log) {
-        log.throttle = setDefaultLogThrottleConfig(log.throttle);
+    if (config.log) {
+        config.log = setDefaultLogBasicConfig(config.log);
     }
 
     return config;

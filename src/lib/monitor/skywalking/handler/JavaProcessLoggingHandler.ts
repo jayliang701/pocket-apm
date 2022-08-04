@@ -1,6 +1,13 @@
 import dayjs from "dayjs";
 import ServiceHandler from "./ServiceHandler";
 import { Log, LogLevel, ProcessLoggingAlert, SkywalkingConfig, SkywalkingLoggingCollectData, SkywalkingLoggingConfig } from "../../../types";
+import Chain, { ChainNode } from "../../../utils/Chain";
+
+class LogNode extends ChainNode<Log> {
+    override get key() {
+        return this._value.time;
+    }
+}
 
 export default class JavaProcessLoggingHandler extends ServiceHandler {
 
@@ -22,6 +29,20 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
             str = str.trim();
             this.levelFilter.set(str, str as LogLevel);
         });
+
+        for (let key in this.pendingAlerts) {
+            const chain = this.pendingAlerts[key];
+            chain.maxSize = this.loggingConfig.debounce.maxNum;
+        }
+    }
+
+    override dispose(): void {
+        super.dispose();
+        for (let key in this.timers) {
+            const timer = this.timers[key];
+            clearTimeout(timer);
+        }
+        this.timers = undefined;
     }
 
     /**
@@ -66,7 +87,7 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
     private levelIndex: number = 0;
     private prevLogTime: number = 0;
     
-    private pendingAlerts: Record<string, Log[]> = {};
+    private pendingAlerts: Record<string, Chain<Log>> = {};
     private timers: Record<string, any> = {};
 
     collect(data: SkywalkingLoggingCollectData): void {
@@ -85,14 +106,14 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
 
         const log = this.parseLog(data);
         if (!this.pendingAlerts[serviceInstance]) {
-            this.pendingAlerts[serviceInstance] = [];
+            this.pendingAlerts[serviceInstance] = new Chain(this.loggingConfig.debounce.maxNum);
         }
-        this.pendingAlerts[serviceInstance].push(log);
+        this.pendingAlerts[serviceInstance].add(new LogNode(log));
 
         this.checkAlert(serviceInstance);
     }
 
-    private checkAlert(serviceInstance: string,): void {
+    private checkAlert(serviceInstance: string): void {
         const logs = this.pendingAlerts[serviceInstance];
         if (!logs || logs.length < 1) return;
 
@@ -100,8 +121,8 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
             this.timers[serviceInstance] = setTimeout(async () => {
                 delete this.timers[serviceInstance];
                 try {
-                    let alerts = [...logs];
-                    logs.length = 0;
+                    let alerts = logs.toArray();
+                    delete this.pendingAlerts[serviceInstance];
 
                     const payload: ProcessLoggingAlert = {
                         service: this.config.service,
@@ -112,7 +133,7 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
                 } catch (err) {
                     console.error(err);
                 }
-            }, (this.loggingConfig?.throttle?.delay) * 1000);
+            }, (this.loggingConfig?.debounce?.delay) * 1000);
         }
     }
 

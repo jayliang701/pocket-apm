@@ -34,14 +34,9 @@ export default class ProcessloggingReporterHandler extends SkywalkingReporterHan
 
         let txtLogs: string[] = [];
         let htmlLogs: string = '';
-        let i = 0;
         for (let log of alerts) {
             txtLogs.push(log.lines.join('\n'));
             if (this.enableEmailChannel) htmlLogs += `<pre style="background: #eeeeee; padding: 12px;"><code>${log.lines.join('<br/>')}</code></pre>\n`;
-            i++;
-            if (i >= (skywalkingConfig.log.throttle.maxLogsPerAlert - 1)) {
-                break;
-            }
         }
 
         if (this.enableEmailChannel) {
@@ -53,7 +48,7 @@ export default class ProcessloggingReporterHandler extends SkywalkingReporterHan
                 `Service: ${service}`,
                 `Service Instance: ${serviceInstance}`,
                 ``,
-                `相关内容 (最多显示 ${skywalkingConfig.log.throttle.maxLogsPerAlert} 个事件): `,
+                `相关内容 (最多显示 ${skywalkingConfig.log.debounce.maxNum} 个事件): `,
                 txtLogs.join('\n\n'),
             ];
             let htmlBody = `
@@ -64,7 +59,7 @@ export default class ProcessloggingReporterHandler extends SkywalkingReporterHan
                 <div>Service: ${service}</div>
                 <div>Service Instance: ${serviceInstance}</div>
                 <div>
-                <div>相关内容 (最多显示 ${skywalkingConfig.log.throttle.maxLogsPerAlert} 个事件): </div>
+                <div>相关内容 (最多显示 ${skywalkingConfig.log.debounce.maxNum} 个事件): </div>
                 ${htmlLogs}
                 </div>
             `;
