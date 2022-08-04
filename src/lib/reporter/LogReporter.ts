@@ -1,23 +1,11 @@
 import dayjs from "dayjs";
 import { EmailReport, LarkMessage, LarkReport, Log, Report } from "../types";
-import Throttle from "../utils/Throttle";
 import Reporter from "./Reporter";
 
 export default class LogReporter extends Reporter {
 
-    private throttle: Throttle = new Throttle();
-
     async process(watcherId: string, alerts: Log[]) {
-        this.throttle.execute(this.doProcess, watcherId, alerts);
-    }
-
-    doProcess = (watcherId: string, alerts: Log[]) => {
         this.sendReports(this.buildReports(watcherId, alerts));
-    }
-
-    override async refresh() {
-        this.throttle.setConfig(this.config.log!.throttle);
-        console.log('throttle update...', this.config.log!.throttle)
     }
 
     private buildReports(watcherId: string, alerts: Log[]): Report[] {

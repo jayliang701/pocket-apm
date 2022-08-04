@@ -1,9 +1,9 @@
-export class ChainNode<T extends any = { id: string }> {
+export class ChainNode<T extends (any | { id: string }) = { id: string }> {
     public left: ChainNode<T> | undefined;
     public right: ChainNode<T> | undefined;
     protected _value: T;
 
-    get key() {
+    get key(): string {
         return this._value['id'];
     }
 
@@ -16,7 +16,7 @@ export class ChainNode<T extends any = { id: string }> {
     }
 }
 
-export default class Chain<T extends any = { id: string }> {
+export default class Chain<T extends (any | { id: string }) = { id: string }> {
     protected first: ChainNode<T> | undefined;
     protected last: ChainNode<T> | undefined;
     protected nodes: Map<string, ChainNode<T>> = new Map();
@@ -104,6 +104,10 @@ export default class Chain<T extends any = { id: string }> {
         this.first = undefined;
         this.last = undefined;
         this.size = 0;
+    }
+
+    get(key: string): ChainNode<T> | undefined {
+        return this.nodes.get(key);
     }
 
     toArray(): T[] {

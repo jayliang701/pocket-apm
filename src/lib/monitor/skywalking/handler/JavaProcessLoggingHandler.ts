@@ -1,13 +1,8 @@
 import dayjs from "dayjs";
 import ServiceHandler from "./ServiceHandler";
 import { Log, LogLevel, ProcessLoggingAlert, SkywalkingConfig, SkywalkingLoggingCollectData, SkywalkingLoggingConfig } from "../../../types";
-import Chain, { ChainNode } from "../../../utils/Chain";
-
-class LogNode extends ChainNode<Log> {
-    override get key() {
-        return this._value.time;
-    }
-}
+import Chain from "../../../utils/Chain";
+import LogNode from "../../../utils/LogNode";
 
 export default class JavaProcessLoggingHandler extends ServiceHandler {
 
@@ -121,7 +116,7 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
             this.timers[serviceInstance] = setTimeout(async () => {
                 delete this.timers[serviceInstance];
                 try {
-                    let alerts = logs.toArray();
+                    const alerts = logs.toArray();
                     delete this.pendingAlerts[serviceInstance];
 
                     const payload: ProcessLoggingAlert = {

@@ -12,7 +12,7 @@
         "build": "npm run build-ts && npm run assets",
         "start": "npm run build && npm run serve",
         "start:dev": "npm run clean && nodemon",
-        "test": "NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit --logHeapUsage test/*",
+        "test": "npm run clean && NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit --logHeapUsage test/*",
         "prettier": "prettier --check './**/*.ts'",
         "validate": "npm run prettier && npm run tslint && npm run build-ts"
     },

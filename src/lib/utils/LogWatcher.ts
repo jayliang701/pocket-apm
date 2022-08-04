@@ -1,5 +1,8 @@
 import Tail from 'tail-file';
 import { Log, SingleLogConfig } from '../types';
+import Chain from './Chain';
+import LogNode from './LogNode';
+import Throttle from './Throttle';
 import TypedEventEmitter from './TypedEventEmitter';
 
 export type LogWatcherEvents = {
@@ -8,13 +11,15 @@ export type LogWatcherEvents = {
 
 export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
 
+    private throttle: Throttle = new Throttle();
+
     protected config: SingleLogConfig;
 
     protected watcher: Tail;
 
     protected logs: string[] = [];
 
-    protected pendingAlerts: Log[] = [];
+    private pendingAlerts: Chain<Log> = new Chain();
 
     protected timer: any;
 
@@ -42,6 +47,8 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
             ...config,
             file: this.targetFile,
         }
+        this.pendingAlerts.maxSize = this.config.debounce.maxNum;
+        this.throttle.setConfig(this.config.throttle);
     }
 
     async start() {
@@ -70,6 +77,8 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
     }
 
     private onFileNewLine(line: string) {
+        if (this.logs.length === 0 && this.throttle.isBlocked) return;
+
         if (this.checkIsTargetLog(line)) {
             //日志输出第一行, 带日期时间
             //先把之前错误日志处理了
@@ -148,24 +157,25 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
             lines: [...this.logs],
         };
 
-        this.pendingAlerts.push(newAlerts);
+        this.pendingAlerts.add(new LogNode(newAlerts));
 
         if (!this.timer) {
             this.timer = setTimeout(async () => {
                 this.timer = undefined;
                 try {
-                    let alerts = [...this.pendingAlerts];
-                    this.pendingAlerts.length = 0;
+                    const alerts = this.pendingAlerts.toArray();
+                    this.pendingAlerts.removeAll();
 
-                    // await sendEmail(alerts);
-                    // console.log(alerts);
-                    // this.emit(LogWatcher.EVENT_NOTIFY, );
-                    this.emit('notify', this.id, alerts);
+                    this.throttle.execute(this.notify, alerts);
                 } catch (err) {
                     console.error(err);
                 }
             }, (this.config?.debounce?.delay) * 1000);
         }
+    }
+
+    notify = (alerts: Log[]) => {
+        this.emit('notify', this.id, alerts);
     }
 
 }

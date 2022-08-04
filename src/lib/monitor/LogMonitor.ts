@@ -4,7 +4,7 @@ import LogWatcher from "../utils/LogWatcher";
 import Monitor from "./Monitor";
 
 type SharedKeys = { [P in keyof Omit<LogConfig, 'watch' | 'throttle'>]: true };
-const sharedKeys: SharedKeys = { 'dateTimeFilter': true, 'logFilter': true, 'errorLogFilter': true };
+const sharedKeys: SharedKeys = { 'dateTimeFilter': true, 'logFilter': true, 'errorLogFilter': true, 'debounce': true };
 
 const copyProperties = (config: LogConfig, singleConfig: SingleLogConfig): SingleLogConfig => {
     for (let key in sharedKeys) {
@@ -47,6 +47,7 @@ export default class LogMonitor extends Monitor {
 
         const { log: logConfig } = this.config;
 
+        const hash: Record<string, SingleLogConfig> = {};
         const newHash: Record<string, SingleLogConfig> = {};
         (logConfig.watch || []).forEach((item) => {
             let singleLogConfig: SingleLogConfig;
@@ -59,6 +60,7 @@ export default class LogMonitor extends Monitor {
             }
             singleLogConfig = copyProperties(logConfig, singleLogConfig);
             newHash[singleLogConfig.file] = singleLogConfig;
+            hash[singleLogConfig.file] = singleLogConfig;
         });
         
         let remains: LogWatcher[] = [];
@@ -81,13 +83,13 @@ export default class LogMonitor extends Monitor {
         }
 
         for (let watcher of remains) {
-            await watcher.updateConfig(newHash[watcher.id]);
             console.log('update watcher --> ', watcher.id);
+            await watcher.updateConfig(hash[watcher.id]);
         }
 
         //setup new log watchers 
         for (let logFile in newHash) {
-            const watcher: LogWatcher = new LogWatcher(newHash[logFile]);
+            const watcher: LogWatcher = new LogWatcher(hash[logFile]);
             watcher.on('notify', this.onLogNotify);
             this.logWatchers[watcher.id] = watcher;
             console.log('add new watcher --> ', watcher.id);

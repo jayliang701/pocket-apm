@@ -44,6 +44,15 @@ export default class Throttle {
     
     private config: ThrottleConfig;
 
+    get isBlocked(): boolean {
+        const now = Date.now();
+        if (this.count >= this.config.maxTimesInWindow && 
+            (this.timeWindowStartTime <= now && now <= this.timeWindowEndTime)) {
+            return true;
+        }
+        return false;
+    }
+
     setConfig(config: ThrottleConfig) {
         this.config = config;
         if (this.timeWindowStartTime && this.timeWindowEndTime) {
