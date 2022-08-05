@@ -1,19 +1,11 @@
 import LogReporter from "../reporter/LogReporter";
 import { Log, LogConfig, SingleLogConfig } from "../types";
+import { deepSet } from "../utils";
 import LogWatcher from "../utils/LogWatcher";
 import Monitor from "./Monitor";
 
-type SharedKeys = { [P in keyof Omit<LogConfig, 'watch' | 'throttle'>]: true };
-const sharedKeys: SharedKeys = { 'dateTimeFilter': true, 'logFilter': true, 'errorLogFilter': true, 'debounce': true };
-
-const copyProperties = (config: LogConfig, singleConfig: SingleLogConfig): SingleLogConfig => {
-    for (let key in sharedKeys) {
-        if (singleConfig[key] == null || singleConfig[key] == undefined) {
-            singleConfig[key] = config[key];
-        }
-    }
-    return singleConfig;
-}
+type IgnoreKeys = Record<keyof Pick<LogConfig, 'watch'>, true>;
+const ignoreKeys: IgnoreKeys = { 'watch': true };
 
 export default class LogMonitor extends Monitor {
 
@@ -58,7 +50,8 @@ export default class LogMonitor extends Monitor {
             } else {
                 singleLogConfig = item;
             }
-            singleLogConfig = copyProperties(logConfig, singleLogConfig);
+            singleLogConfig = deepSet(logConfig, singleLogConfig, ignoreKeys);
+            console.log(singleLogConfig);
             newHash[singleLogConfig.file] = singleLogConfig;
             hash[singleLogConfig.file] = singleLogConfig;
         });

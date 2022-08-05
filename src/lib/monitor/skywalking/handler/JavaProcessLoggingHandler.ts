@@ -133,7 +133,7 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
     }
 
     private parseDateTime(data: SkywalkingLoggingCollectData): string {
-        return dayjs(Number(data.timestamp)).format('YYYY-MM-DD HH:mm:ss.sss');
+        return dayjs(Number(data.timestamp)).format('YYYY-MM-DD HH:mm:ss.SSS');
     }
 
     private parseLogText(data: SkywalkingLoggingCollectData): string {

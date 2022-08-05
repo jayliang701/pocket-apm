@@ -55,6 +55,12 @@ export type LogBasicConfig = {
 };
 
 export type LogConfig = {
+    timeCheck: boolean;   //是否开启日志时间检查, 默认false
+                          //为false时, pocket-apm不会在采集阶段处理日志时间(即不会将 dateTimeFilter 解析出的结果再变成时间戳), 以便获得更好的性能
+                          //如果日志时间字符串无法变成时间戳(dayjs无法解析), 则跳过日志时间检查
+                          //为true时, pocket-apm会解析每条目标日志(即满足 errorLogFilter 的日志)的时间,
+                          //并丢弃不满足时间连续性的日志(即新采集到的日志的时间不得早于之前已采集日志的时间)
+                          //第一条被采集日志的时间将和watch的启动时间做对比
     dateTimeFilter: RegExp | ((log: string) => string | undefined);
     logFilter: RegExp | ((log: string) => boolean);
     errorLogFilter: RegExp | ((log: string) => boolean);

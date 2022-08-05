@@ -78,13 +78,16 @@ export const setDefaultLogConfig = (config: LogConfig | undefined): LogConfig | 
     if (!config) return undefined;
     
     setDefaultLogBasicConfig(config);
+
+    config.timeCheck = config.timeCheck === true ? true : false;
+
     return config;
 }
 
 export const setDefaultSkywalkingConfig = (config: SkywalkingConfig | undefined): SkywalkingConfig | undefined => {
     if (!config) return undefined;
     
-    let { warn, log } = config;
+    let { warn } = config;
     if (warn) {
         if (!warn.timeLimit) warn.timeLimit = { durationMinutes: 0 };
         warn.timeLimit.durationMinutes = warn.timeLimit.durationMinutes || 5;
