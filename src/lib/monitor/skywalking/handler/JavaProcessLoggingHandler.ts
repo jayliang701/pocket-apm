@@ -1,6 +1,9 @@
 import dayjs from "dayjs";
 import ServiceHandler from "./ServiceHandler";
 import { Log, LogLevel, ProcessLoggingAlert, SkywalkingConfig, SkywalkingLoggingCollectData, SkywalkingLoggingConfig } from "../../../types";
+import Chain from "../../../utils/Chain";
+import LogNode from "../../../utils/LogNode";
+import Throttle from "../../../utils/Throttle";
 
 export default class JavaProcessLoggingHandler extends ServiceHandler {
 
@@ -14,6 +17,8 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
     
     levelFilter: Map<string, LogLevel> = new Map();
 
+    protected throttle: Throttle = new Throttle();
+
     override refresh(config: SkywalkingConfig): void {
         super.refresh(config);
         this.levelFilter.clear();
@@ -22,6 +27,22 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
             str = str.trim();
             this.levelFilter.set(str, str as LogLevel);
         });
+
+        for (let key in this.pendingAlerts) {
+            const chain = this.pendingAlerts[key];
+            chain.maxSize = this.loggingConfig.debounce.maxNum;
+        }
+
+        this.throttle.setConfig(this.loggingConfig.throttle);
+    }
+
+    override dispose(): void {
+        super.dispose();
+        for (let key in this.timers) {
+            const timer = this.timers[key];
+            clearTimeout(timer);
+        }
+        this.timers = undefined;
     }
 
     /**
@@ -66,10 +87,12 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
     private levelIndex: number = 0;
     private prevLogTime: number = 0;
     
-    private pendingAlerts: Record<string, Log[]> = {};
+    private pendingAlerts: Record<string, Chain<Log>> = {};
     private timers: Record<string, any> = {};
 
     collect(data: SkywalkingLoggingCollectData): void {
+        if (this.throttle.isBlocked) return;
+
         const { timestamp, serviceInstance } = data;
         if (Number(timestamp) < this.prevLogTime) {
             return;
@@ -85,14 +108,14 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
 
         const log = this.parseLog(data);
         if (!this.pendingAlerts[serviceInstance]) {
-            this.pendingAlerts[serviceInstance] = [];
+            this.pendingAlerts[serviceInstance] = new Chain(this.loggingConfig.debounce.maxNum);
         }
-        this.pendingAlerts[serviceInstance].push(log);
+        this.pendingAlerts[serviceInstance].add(new LogNode(log));
 
         this.checkAlert(serviceInstance);
     }
 
-    private checkAlert(serviceInstance: string,): void {
+    private checkAlert(serviceInstance: string): void {
         const logs = this.pendingAlerts[serviceInstance];
         if (!logs || logs.length < 1) return;
 
@@ -100,24 +123,19 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
             this.timers[serviceInstance] = setTimeout(async () => {
                 delete this.timers[serviceInstance];
                 try {
-                    let alerts = [...logs];
-                    logs.length = 0;
+                    const alerts = logs.toArray();
+                    delete this.pendingAlerts[serviceInstance];
 
-                    const payload: ProcessLoggingAlert = {
-                        service: this.config.service,
-                        serviceInstance,
-                        alerts,
-                    };
-                    this.emitUpdate(payload);
+                    this.throttle.execute(this.notify, serviceInstance, alerts);
                 } catch (err) {
                     console.error(err);
                 }
-            }, (this.loggingConfig?.throttle?.delay) * 1000);
+            }, (this.loggingConfig?.debounce?.delay) * 1000);
         }
     }
 
     private parseDateTime(data: SkywalkingLoggingCollectData): string {
-        return dayjs(Number(data.timestamp)).format('YYYY-MM-DD HH:mm:ss.sss');
+        return dayjs(Number(data.timestamp)).format('YYYY-MM-DD HH:mm:ss.SSS');
     }
 
     private parseLogText(data: SkywalkingLoggingCollectData): string {
@@ -155,6 +173,15 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
             }
         }
         return type;
+    }
+
+    notify = (serviceInstance: string, alerts: Log[]) => {
+        const payload: ProcessLoggingAlert = {
+            service: this.config.service,
+            serviceInstance,
+            alerts,
+        };
+        this.emitUpdate(payload);
     }
 
 }

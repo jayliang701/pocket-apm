@@ -16,3 +16,17 @@ export function loopHash<T>(hash: Record<any, T>, map: (element: T, key?: any) =
         map(hash[key], key);
     }
 }
+
+export function deepSet<S extends object, T extends object>(src: S, target: T, ignoreKeys?: Record<any, true>): T {
+    for (let key in src) {
+        if (ignoreKeys && ignoreKeys[key]) continue;
+        const val = src[key];
+        const kt = key as any;
+        if (typeof val === 'object' && !(val instanceof RegExp || val instanceof Date)) {
+            target[kt] = deepSet(val as any, target[kt] || {});
+        } else {
+            target[kt] = src[key];
+        }
+    }
+    return target;
+}

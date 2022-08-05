@@ -1,5 +1,9 @@
+import dayjs from 'dayjs';
 import Tail from 'tail-file';
 import { Log, SingleLogConfig } from '../types';
+import Chain from './Chain';
+import LogNode from './LogNode';
+import Throttle from './Throttle';
 import TypedEventEmitter from './TypedEventEmitter';
 
 export type LogWatcherEvents = {
@@ -8,19 +12,25 @@ export type LogWatcherEvents = {
 
 export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
 
+    protected throttle: Throttle = new Throttle();
+
     protected config: SingleLogConfig;
 
     protected watcher: Tail;
 
     protected logs: string[] = [];
 
-    protected pendingAlerts: Log[] = [];
+    protected pendingAlerts: Chain<Log> = new Chain();
 
     protected timer: any;
 
     protected startLogErr: boolean = false;
 
     protected lastPos: number = 0;
+
+    protected lastAlertLogTime: number = 0;
+
+    protected watcherStartupTime: number = 0;
 
     get id(): string {
         return this.targetFile;
@@ -32,15 +42,28 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
 
     constructor(config: SingleLogConfig) {
         super();
+        this.watcherStartupTime = Date.now();
         this.config = config;
         this.onFileNewLine = this.onFileNewLine.bind(this);
         this.onFileEOF = this.onFileEOF.bind(this);
+        this.afterConfigUpdate();
     }
 
     updateConfig(config: Omit<SingleLogConfig, 'file'>) {
         this.config = {
             ...config,
             file: this.targetFile,
+        }
+        this.afterConfigUpdate();
+    }
+
+    private afterConfigUpdate() {
+        this.pendingAlerts.maxSize = this.config.debounce.maxNum;
+        this.throttle.setConfig(this.config.throttle);
+        if (this.config.timeCheck) {
+            this.lastAlertLogTime = this.watcherStartupTime;
+        } else {
+            this.lastAlertLogTime = 0;
         }
     }
 
@@ -70,6 +93,10 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
     }
 
     private onFileNewLine(line: string) {
+        if (this.logs.length === 0 && this.throttle.isBlocked) {
+            return;
+        }
+
         if (this.checkIsTargetLog(line)) {
             //日志输出第一行, 带日期时间
             //先把之前错误日志处理了
@@ -143,29 +170,46 @@ export default class LogWatcher extends TypedEventEmitter<LogWatcherEvents> {
 
         const firstLine = this.logs[0];
         const time = this.parseDateTime(firstLine);
+        if (this.config.timeCheck) {
+            try {
+                let t = dayjs(time);
+                if (t.isValid()) {
+                    let ts = t.valueOf();
+                    if (ts <= this.lastAlertLogTime) {
+                        return;
+                    } else {
+                        this.lastAlertLogTime = ts;
+                    }
+                }
+            } catch {
+                //ignore parse error
+            }
+        }
+        
         const newAlerts: Log = {
             time,
-            lines: [...this.logs],
+            lines: [].concat(this.logs),
         };
 
-        this.pendingAlerts.push(newAlerts);
+        this.pendingAlerts.add(new LogNode(newAlerts));
 
         if (!this.timer) {
             this.timer = setTimeout(async () => {
                 this.timer = undefined;
                 try {
-                    let alerts = [...this.pendingAlerts];
-                    this.pendingAlerts.length = 0;
+                    const alerts = this.pendingAlerts.toArray();
+                    this.pendingAlerts.removeAll();
 
-                    // await sendEmail(alerts);
-                    // console.log(alerts);
-                    // this.emit(LogWatcher.EVENT_NOTIFY, );
-                    this.emit('notify', this.id, alerts);
+                    this.throttle.execute(this.notify, alerts);
                 } catch (err) {
                     console.error(err);
                 }
-            }, (this.config?.throttle?.delay) * 1000);
+            }, (this.config?.debounce?.delay) * 1000);
         }
+    }
+
+    notify = (alerts: Log[]) => {
+        this.emit('notify', this.id, alerts);
     }
 
 }

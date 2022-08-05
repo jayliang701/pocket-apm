@@ -46,18 +46,26 @@ export type ThrottleConfig = {
     durationPerTime: number; //秒, 每次执行的时间间隔
 };
 
-export type LogThrottleConfig = {
-    delay: number;   //秒, 收到目标日志后延迟多少秒发出预警通知
-    maxLogsPerAlert: number;   //每次通知最多包含的日志条数
-} & ThrottleConfig;
+export type LogBasicConfig = {
+    debounce: {
+        delay: number;   //秒, 节流, 比如第一条错误日志出现时开始计时, 在随后的N秒内如果还出现其他错误日志, 则等到最后一并发送通知
+        maxNum: number;   //最多保留几条日志
+    };
+    throttle: ThrottleConfig;
+};
 
 export type LogConfig = {
+    timeCheck: boolean;   //是否开启日志时间检查, 默认false
+                          //为false时, pocket-apm不会在采集阶段处理日志时间(即不会将 dateTimeFilter 解析出的结果再变成时间戳), 以便获得更好的性能
+                          //如果日志时间字符串无法变成时间戳(dayjs无法解析), 则跳过日志时间检查
+                          //为true时, pocket-apm会解析每条目标日志(即满足 errorLogFilter 的日志)的时间,
+                          //并丢弃不满足时间连续性的日志(即新采集到的日志的时间不得早于之前已采集日志的时间)
+                          //第一条被采集日志的时间将和watch的启动时间做对比
     dateTimeFilter: RegExp | ((log: string) => string | undefined);
     logFilter: RegExp | ((log: string) => boolean);
     errorLogFilter: RegExp | ((log: string) => boolean);
-    throttle: LogThrottleConfig;
     watch: (string | SingleLogConfig)[];
-};
+} & LogBasicConfig;
 
 export type SingleLogConfig = {
     file: string;
@@ -72,19 +80,18 @@ export type SkywalkingServerConfig = {
 export type SkywalkingLoggingConfig = {
     level: string;   //ERROR, INFO, WARN, DEBUG
     filter?: (log: SkywalkingLoggingCollectData, level: LogLevel) => boolean;
-} & Pick<LogConfig, 'throttle'>;
+} & LogBasicConfig;
 
 export type SkywalkingConfig = {
     service: string;
     metricLogPath: string;
     warn?: {
-        timeLimit: {
-            durationMinutes: number;
-        },
+        durationMinutes: number;
+        throttle: ThrottleConfig;
         jvm?: {
             cpu?: number;   //avg CPU usage warn line. range: 0 - 100 (%)
         }
-    },
+    };
     log?: SkywalkingLoggingConfig;
 };
 

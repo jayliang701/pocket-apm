@@ -1,10 +1,10 @@
-export class ChainNode<T extends { id: string }> {
+export class ChainNode<T extends (any | { id: string }) = { id: string }> {
     public left: ChainNode<T> | undefined;
     public right: ChainNode<T> | undefined;
     protected _value: T;
 
-    get id() {
-        return this._value.id;
+    get key(): string {
+        return this._value['id'];
     }
 
     get value() {
@@ -16,11 +16,12 @@ export class ChainNode<T extends { id: string }> {
     }
 }
 
-export default class Chain<T extends { id: string }> {
-    private first: ChainNode<T> | undefined;
-    private last: ChainNode<T> | undefined;
-    private nodes: Map<string, ChainNode<T>> = new Map();
-    private size: number = 0;
+export default class Chain<T extends (any | { id: string }) = { id: string }> {
+    protected first: ChainNode<T> | undefined;
+    protected last: ChainNode<T> | undefined;
+    protected nodes: Map<string, ChainNode<T>> = new Map();
+    protected size: number = 0;
+    protected maxLen: number = 0;
 
     get length() {
         return this.size;
@@ -32,6 +33,21 @@ export default class Chain<T extends { id: string }> {
 
     get tail() {
         return this.last;
+    }
+
+    get maxSize() {
+        return this.maxLen;
+    }
+
+    set maxSize(maxLen: number) {
+        this.maxLen = maxLen;
+        while (this.maxLen > 0 && this.size > this.maxLen) {
+            this.remove(this.head);
+        }
+    }
+
+    constructor(maxSize: number = 0) {
+        this.maxLen = maxSize;
     }
 
     add(node: ChainNode<T>) {
@@ -49,13 +65,17 @@ export default class Chain<T extends { id: string }> {
             this.first = node;
         }
 
-        this.nodes.set(node.id, node);
+        this.nodes.set(node.key, node);
         this.size ++;
+
+        if (this.maxLen > 0 && this.size > this.maxLen) {
+            this.remove(this.head);
+        }
     }
 
-    remove(node) {
-        if (!this.nodes.has(node.id)) return;
-        const n = this.nodes.get(node.id);
+    remove(node: ChainNode<T>) {
+        if (!this.nodes.has(node.key)) return;
+        const n = this.nodes.get(node.key);
         if (n.left) {
             n.left.right = n.right;
         } else {
@@ -71,18 +91,33 @@ export default class Chain<T extends { id: string }> {
         node.left = undefined;
         node.right = undefined;
 
-        this.nodes.delete(node.id);
+        this.nodes.delete(node.key);
         this.size --;
     }
 
-    clone() {
-        let newChain = new Chain<T>();
-        let next = this.first;
-        while (next) {
-            newChain.add(new ChainNode<T>(next.value));
-            next = next.right;
+    removeAll() {
+        this.nodes.forEach((node) => {
+            node.left = undefined;
+            node.right = undefined;
+        });
+        this.nodes.clear();
+        this.first = undefined;
+        this.last = undefined;
+        this.size = 0;
+    }
+
+    get(key: string): ChainNode<T> | undefined {
+        return this.nodes.get(key);
+    }
+
+    toArray(): T[] {
+        const list: T[] = [];
+        let node = this.first;
+        while (node) {
+            list.push(node.value);
+            node = node.right;
         }
-        return newChain;
+        return list;
     }
     
 }
