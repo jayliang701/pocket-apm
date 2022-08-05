@@ -5,6 +5,11 @@ import FormData from 'form-data';
 import { ENV_VAR_LARK_ACCESS_TOKEN } from "../../consts";
 import envVars from "../../envVars";
 
+export const isLarkAvailable = (): boolean => {
+    const accessToken = envVars.get(ENV_VAR_LARK_ACCESS_TOKEN);
+    return !!accessToken;
+}
+
 //img_v2_450a7d47-826d-4bce-adb5-da3df32522dg
 export const uploadImage = async (image: Buffer): Promise<string> => {
     const accessToken = envVars.get(ENV_VAR_LARK_ACCESS_TOKEN);
