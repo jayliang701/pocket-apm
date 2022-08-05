@@ -51,7 +51,6 @@ export default class LogMonitor extends Monitor {
                 singleLogConfig = item;
             }
             singleLogConfig = deepSet(logConfig, singleLogConfig, ignoreKeys);
-            console.log(singleLogConfig);
             newHash[singleLogConfig.file] = singleLogConfig;
             hash[singleLogConfig.file] = singleLogConfig;
         });

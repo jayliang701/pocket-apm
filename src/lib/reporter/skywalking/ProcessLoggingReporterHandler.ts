@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import { EmailReport, LarkMessage, LarkReport, ProcessLoggingAlert, Report, SkywalkingLoggingConfig } from "../../types";
 import SkywalkingReporterHandler from "./SkywalkingReporterHandler";
-import Throttle from "../../utils/Throttle";
 
 export default class ProcessloggingReporterHandler extends SkywalkingReporterHandler {
 
@@ -9,18 +8,8 @@ export default class ProcessloggingReporterHandler extends SkywalkingReporterHan
         return this.skywalkingConfig.log;
     }
 
-    private throttle: Throttle = new Throttle();
-
     override async process(data: ProcessLoggingAlert) {
-        this.throttle.execute(this.doProcess, data);
-    }
-
-    doProcess = (data: ProcessLoggingAlert) => {
         this.sendReports(this.buildReports(data));
-    }
-
-    override async refresh() {
-        this.throttle.setConfig(this.skywalkingLoggingConfig.throttle);
     }
 
     private buildReports({ service, serviceInstance, alerts }: ProcessLoggingAlert): Report[] {

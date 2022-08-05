@@ -1,6 +1,6 @@
 
 
-import { Server, loadPackageDefinition, ServerCredentials, ServerReadableStream } from '@grpc/grpc-js';
+import { Server, loadPackageDefinition, ServerCredentials, ServerReadableStream, UntypedServiceImplementation, ServiceDefinition } from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import { SkywalkingServerConfig } from '../../types';
 import path from 'path';
@@ -22,14 +22,6 @@ const loadMetricProto = (filename: string): any => {
     const proto = loadPackageDefinition(packageDefinition);
     return proto;
 }
-
-async function readableToString2(readable) {
-    let result = '';
-    for await (const chunk of readable) {
-      result += chunk;
-    }
-    return result;
-  }
 
 export default class RPCServer extends Server {
 
@@ -65,28 +57,38 @@ export default class RPCServer extends Server {
         this.dispatcher.off(eventName, handler);
     }
 
-    private diffConfig(config: SkywalkingServerConfig) {
+    private diffConfig(config: SkywalkingServerConfig): [ boolean, boolean ] {
+        let restart = false;
+        let refresh = false;
         if (!this.config ||
             (this.config.host !== config.host ||
                 this.config.port !== config.port)) {
-            return true;
+            restart = true;
         }
-        return false;
+        if (!this.config ||
+            (this.config.enableLogging !== config.enableLogging)) {
+            refresh = true;
+        }
+        return [ restart, refresh ];
     }
 
     run(config: SkywalkingServerConfig): Promise<void> {
         return new Promise(async (resolve, reject) => {
 
-            let restart = false;
-            if (this.diffConfig(config)) {
-                restart = true;
-            } else if (!this.running) {
+            let [ restart, refresh ] = this.diffConfig(config);
+            if (restart || !this.running) {
                 restart = true;
             }
 
             this.config = { ...config };
 
             if (!restart) {
+
+                //check enableLogging
+                if (refresh) {
+                    this.registerRPCServices();
+                }
+
                 resolve();
                 return;
             }
@@ -176,6 +178,11 @@ export default class RPCServer extends Server {
         }
     }
 
+    private registerSingleRPCService(service: ServiceDefinition, implementation: UntypedServiceImplementation) {
+        this.removeService(service);
+        this.addService(service, implementation);
+    }
+
     private registerRPCServices() {
         const metricProto = loadMetricProto('JVMMetric.proto');
         const configDiscoveryProto = loadMetricProto('ConfigurationDiscoveryService.proto');
@@ -187,44 +194,44 @@ export default class RPCServer extends Server {
         const profileProto = loadMetricProto('Profile.proto');
         const loggingProto = loadMetricProto('Logging.proto');
 
-        this.addService(metricProto.skywalking.v3.JVMMetricReportService.service, {
+        this.registerSingleRPCService(metricProto.skywalking.v3.JVMMetricReportService.service, {
             collect: this.createServiceHandler('JVMMetricReportService', 'collect', true),
         });
 
-        this.addService(profileProto.skywalking.v3.ProfileTask.service, {
+        this.registerSingleRPCService(profileProto.skywalking.v3.ProfileTask.service, {
             getProfileTaskCommands: this.createServiceHandler('ProfileTask', 'getProfileTaskCommands'),
             collectSnapshot: this.createServiceHandler('ProfileTask', 'collectSnapshot'),
             reportTaskFinish: this.createServiceHandler('ProfileTask', 'reportTaskFinish'),
         });
 
-        this.addService(meterProto.skywalking.v3.MeterReportService.service, {
+        this.registerSingleRPCService(meterProto.skywalking.v3.MeterReportService.service, {
             collect: this.createServiceHandler('MeterReportService', 'collect'),
             collectBatch: this.createServiceHandler('MeterReportService', 'collectBatch'),
         });
 
-        this.addService(managementProto.skywalking.v3.ManagementService.service, {
+        this.registerSingleRPCService(managementProto.skywalking.v3.ManagementService.service, {
             reportInstanceProperties: this.createServiceHandler('ManagementService', 'reportInstanceProperties'),
             keepAlive: this.createServiceHandler('ManagementService', 'keepAlive'),
         });
 
-        this.addService(traceProto.skywalking.v3.TraceSegmentReportService.service, {
+        this.registerSingleRPCService(traceProto.skywalking.v3.TraceSegmentReportService.service, {
             collect: this.createServiceHandler('TraceSegmentReportService', 'collect'),
         });
 
-        this.addService(configDiscoveryProto.skywalking.v3.ConfigurationDiscoveryService.service, {
+        this.registerSingleRPCService(configDiscoveryProto.skywalking.v3.ConfigurationDiscoveryService.service, {
             fetchConfigurations: this.createServiceHandler('ConfigurationDiscoveryService', 'fetchConfigurations'),
         });
 
-        this.addService(eventProto.skywalking.v3.EventService.service, {
+        this.registerSingleRPCService(eventProto.skywalking.v3.EventService.service, {
             collect: this.createServiceHandler('EventService', 'collect'),
         });
 
-        this.addService(metricExportProto.MetricExportService.service, {
+        this.registerSingleRPCService(metricExportProto.MetricExportService.service, {
             export: this.createServiceHandler('MetricExportService', 'export'),
             subscription: this.createServiceHandler('MetricExportService', 'subscription'),
         });
 
-        this.addService(loggingProto.skywalking.v3.LogReportService.service, {
+        this.registerSingleRPCService(loggingProto.skywalking.v3.LogReportService.service, {
             collect: this.createServiceHandler('LogReportService', 'collect', this.config.enableLogging ? true : false),
         });
     }
