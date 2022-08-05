@@ -5,11 +5,14 @@ module.exports = {
     skywalking: {
         service: 'demo1',
         warn: {
-            timeLimit: {
-                durationMinutes: 5,  //每次预警时间间隔（分钟）
-            },
+            durationMinutes: 5,  //每次预警时间间隔（分钟）, 默认5分钟
+            // throttle: {
+            //     maxTimesInWindow: 2,  //在时间窗口中最多发送几次, 默认2次
+            //     windowTime: 60 * 60,  //秒，时间窗口, 默认1小时
+            //     durationPerTime: 20 * 60,  //秒, 每次通知的时间间隔, 默认20分钟
+            // },
             jvm: {
-                cpu: 70.00,  //0 ~ 100, N分钟 (timeLimit.durationMinutes) 内CPU平均使用率达到该值时将发出预警消息
+                cpu: 40.00,  //0 ~ 100, N分钟 (durationMinutes) 内CPU平均使用率达到该值时将发出预警消息
             }
         },
         //开启 skywalking 日志收集

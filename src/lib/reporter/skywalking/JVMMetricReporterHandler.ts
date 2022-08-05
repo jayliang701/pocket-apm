@@ -1,10 +1,11 @@
 import dayjs from "dayjs";
-import { EmailReport, JVMMetric, JVMMetricValues, LarkMessage, LarkReport, Log, MetricUpdate, Report } from "../../types";
+import { EmailReport, JVMMetric, JVMMetricValues, LarkMessage, LarkReport, MetricUpdate, Report } from "../../types";
 import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE, TIMESTAMP_LEN } from "../../../consts";
 import { createStream } from '../../utils/readlines';
 import { IMonitor } from "../../monitor/Monitor";
 import { uploadImage } from "../../platform/Lark";
 import SkywalkingReporterHandler from "./SkywalkingReporterHandler";
+import Throttle from "../../utils/Throttle";
 
 const ChartJsImage = require('chartjs-to-image');
 
@@ -220,7 +221,7 @@ type JVMMetricValuesExt = {
 
 class ProcessMetrics {
 
-    private metrics: JVMMetric[] = []
+    private metrics: JVMMetric[] = [];
 
     private aggregateMetric: JVMMetricValues = {
         cpu: 0,
@@ -317,56 +318,78 @@ class ProcessMetrics {
     }
 };
 
-export default class JVMMetricReporter extends SkywalkingReporterHandler {
+export default class JVMMetricReporterHandler extends SkywalkingReporterHandler {
 
-    private lastProcessTime: number = Math.floor(Date.now() / MINUTE) * MINUTE;
+    private lastProcessTime: number = 0;
+
+    private throttle: Throttle = new Throttle();
 
     constructor(monitor: IMonitor) {
         super(monitor);
         this.init();
     }
 
-    /**
-     *  debug
-     */
-    protected init() {
-        // this.process_JVMMetricReportService({
-        //     service: 'demo1',
-        //     serviceInstance: '24f8be1ab4664d17b76dd954c0b4900f@192.168.0.139',
-        //     metricLog: '/Users/jay/Documents/projects/library/pocket-apm/.metric/demo1/24f8be1ab4664d17b76dd954c0b4900f_192.168.0.139-jvm.log',
-        //     // metricLog: '/Users/jay/Documents/projects/library/pocket-apm/.metric/demo1/111.log',
-        //     timeRange: [ 1659261960000, 1659262200000 ],
-        // }).catch(err => {
-        //     console.error(err);
-        // });
+    private init() {
+        this.refreshThrottle();
+        //debug
+        setTimeout(() => {
+            this.process({
+                service: 'demo1',
+                serviceInstance: 'aebd8e55ca1640928c6d61ee469ee299@192.168.0.139',
+                metricLog: 'F:\\projects\\library\\pocket-apm\\.metric\\demo1\\aebd8e55ca1640928c6d61ee469ee299_192.168.0.139-jvm.log',
+                // metricLog: '/Users/jay/Documents/projects/library/pocket-apm/.metric/demo1/111.log',
+                timeRange: [ 1659677160000, 1659677400000 ],
+            });
+        }, 2000);
+    }
+
+    private refreshThrottle() {
+        const { warn } = this.skywalkingConfig;
+        if (warn && warn.throttle) {
+            this.throttle.setConfig(warn.throttle);
+        }
+    }
+
+    override async refresh() {
+        this.refreshThrottle();
+        await super.refresh();
     }
 
     override async process(data: MetricUpdate) {
         try {
             if (!this.skywalkingConfig) return;
 
-            const { metricLog, timeRange } = data;
+            const { timeRange } = data;
 
             const { warn } = this.skywalkingConfig;
             if (warn) {
-                const { timeLimit } = warn;
+                const { durationMinutes } = warn;
                 const passedMins = (timeRange[1] - this.lastProcessTime) / MINUTE;
-                console.log('passedMins ---> ', passedMins, this.lastProcessTime)
-                if (passedMins >= timeLimit.durationMinutes) {
+                // console.log('passedMins ---> ', passedMins, this.lastProcessTime)
+                if (passedMins >= durationMinutes) {
                     this.lastProcessTime = timeRange[1];
-                    const metrics: ProcessMetrics = await readFileFromEnd(metricLog, timeLimit.durationMinutes);
-                    if (metrics.length >= timeLimit.durationMinutes) {
-                        const avgMetric = metrics.avg();
-                        if (warn.jvm.cpu !== undefined && avgMetric.cpu >= warn.jvm.cpu) {
-                            const reports = await this.buildWarnReports(data, 15);
-                            await this.sendReports(reports);
-                        }
-                    }
+                    this.throttle.execute(this.doProcess, data);
                 }
             }
             
         } catch (err) {
             console.error(err);
+        }
+    }
+
+    doProcess = async (data: MetricUpdate) => {
+        const { warn } = this.skywalkingConfig;
+        if (!warn) return;
+
+        const { durationMinutes } = warn;
+
+        const metrics: ProcessMetrics = await readFileFromEnd(data.metricLog, durationMinutes);
+        if (metrics.length >= durationMinutes) {
+            const avgMetric = metrics.avg();
+            if (warn.jvm.cpu !== undefined && avgMetric.cpu >= warn.jvm.cpu) {
+                const reports = await this.buildWarnReports(data, 15);
+                await this.sendReports(reports);
+            }
         }
     }
 

@@ -89,8 +89,8 @@ export const setDefaultSkywalkingConfig = (config: SkywalkingConfig | undefined)
     
     let { warn } = config;
     if (warn) {
-        if (!warn.timeLimit) warn.timeLimit = { durationMinutes: 0 };
-        warn.timeLimit.durationMinutes = warn.timeLimit.durationMinutes || 5;
+        warn.durationMinutes = warn.durationMinutes || 5;
+        warn.throttle = setDefaultThrottleConfig(warn.throttle);
     }
     config.metricLogPath = config.metricLogPath || path.resolve(process.cwd(), `.metric/${config.service}`);
 

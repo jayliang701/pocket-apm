@@ -86,13 +86,12 @@ export type SkywalkingConfig = {
     service: string;
     metricLogPath: string;
     warn?: {
-        timeLimit: {
-            durationMinutes: number;
-        },
+        durationMinutes: number;
+        throttle: ThrottleConfig;
         jvm?: {
             cpu?: number;   //avg CPU usage warn line. range: 0 - 100 (%)
         }
-    },
+    };
     log?: SkywalkingLoggingConfig;
 };
 
