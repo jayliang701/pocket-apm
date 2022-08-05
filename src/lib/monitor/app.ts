@@ -1,6 +1,9 @@
 import envVars from "../../envVars";
 import { MainProcessMessage, SyncEnvVarsMessage, Vars } from "../types";
+import { initTimeUtil } from "../utils";
 import AppNode from "./AppNode";
+
+initTimeUtil();
 
 process.on('message', ({ event, data }: MainProcessMessage) => {
     if (event === 'sync_env_vars') {
