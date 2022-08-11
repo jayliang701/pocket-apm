@@ -1,3 +1,14 @@
+import dayjs from 'dayjs';
+import Duration from 'dayjs/plugin/duration';
+import RelativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/zh-cn'; 
+
+export const initTimeUtil = () => {
+    dayjs.extend(Duration);
+    dayjs.extend(RelativeTime);
+    dayjs.locale('zh-cn');
+}
+
 const UTF8 = 'utf-8';
 
 export const buildFilledString = (val: string, size: number, fill: string | number = '0'): string => {

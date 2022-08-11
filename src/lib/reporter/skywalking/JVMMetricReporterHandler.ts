@@ -3,7 +3,7 @@ import { EmailReport, JVMMetric, JVMMetricValues, LarkMessage, LarkReport, Metri
 import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE, TIMESTAMP_LEN } from "../../../consts";
 import { createStream } from '../../utils/readlines';
 import { IMonitor } from "../../monitor/Monitor";
-import { uploadImage } from "../../platform/Lark";
+import { isLarkAvailable, uploadImage } from "../../platform/Lark";
 import SkywalkingReporterHandler from "./SkywalkingReporterHandler";
 import Throttle from "../../utils/Throttle";
 
@@ -23,8 +23,6 @@ const buildChart = async (labels: string[], datasets: any[], options: any): Prom
 }
 
 const genCharts = async (metrics: JVMMetric[]): Promise<Buffer[]> => {
-    // metrics = [ { "label":"CPU", "value": 29.30845818617146, "time": 1657779694421 }, ... ]
-
     const charts: Buffer[] = [];
     
     const cpus = [];
@@ -345,10 +343,10 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
         // setTimeout(() => {
         //     this.process({
         //         service: 'demo1',
-        //         serviceInstance: 'aebd8e55ca1640928c6d61ee469ee299@192.168.0.139',
-        //         metricLog: 'F:\\projects\\library\\pocket-apm\\.metric\\demo1\\aebd8e55ca1640928c6d61ee469ee299_192.168.0.139-jvm.log',
+        //         serviceInstance: '936bbe3fdc424ceeb05fb1b21a4e9715@192.168.0.139',
+        //         metricLog: '/Users/jay/Documents/projects/library/pocket-apm/test/936bbe3fdc424ceeb05fb1b21a4e9715_192.168.0.139-jvm.log',
         //         // metricLog: '/Users/jay/Documents/projects/library/pocket-apm/.metric/demo1/111.log',
-        //         timeRange: [ 1659677160000, 1659677400000 ],
+        //         timeRange: [ 1659274980000, 1659275220000 ],
         //     });
         // }, 2000);
     }
@@ -396,14 +394,42 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
         const metrics: ProcessMetrics = await readFileFromEnd(data.metricLog, durationMinutes);
         if (metrics.length >= durationMinutes) {
             const avgMetric = metrics.avg();
+            let enableWarn: boolean = false;
+            
             if (warn.jvm.cpu !== undefined && avgMetric.cpu >= warn.jvm.cpu) {
-                const reports = await this.buildWarnReports(data, 15);
+                enableWarn = true;
+            }
+
+            if (enableWarn) {
+                const texts = this.buildReportTexts(metrics, avgMetric, durationMinutes);
+                const reports = await this.buildWarnReports(data, 15, texts);
                 await this.sendReports(reports);
             }
         }
     }
 
-    private async buildWarnReports({ metricLog, service, serviceInstance }: MetricUpdate, mins: number): Promise<Report[]> {
+    private buildReportTexts(metrics: ProcessMetrics, avgMetric: JVMMetricValues, mins: number): string[] {
+        let timeText = '';
+        if (mins > 60) {
+            timeText = dayjs.duration(mins / 60, 'hours').humanize();
+        } else {
+            timeText = dayjs.duration(mins, 'minutes').humanize();
+        }
+        const maxMetric = metrics.max();
+        const texts: string[] = [
+            `${timeText} 内进程资源使用率:`,
+            `CPU - avg: ${avgMetric.cpu.toFixed(2)}%        max: ${maxMetric.cpu.toFixed(2)}%`,
+            `Heap Memory - avg: ${avgMetric.heapMemory} MB        max: ${maxMetric.heapMemory}%`,
+            `Non-Heap Memory - avg: ${avgMetric.nonHeapMemory}%        max: ${maxMetric.nonHeapMemory}%`,
+            `非daemon 线程数 - avg: ${Math.round(avgMetric.liveThread - avgMetric.daemonThread)}        max: ${Math.round(maxMetric.liveThread - maxMetric.daemonThread)}`,
+            `daemon 线程数 - avg: ${Math.round(avgMetric.daemonThread)}        max: ${Math.round(maxMetric.daemonThread)}`,
+            `blocked 线程数 - avg: ${Math.round(avgMetric.blockedThread)}        max: ${Math.round(maxMetric.blockedThread)}`,
+        ];
+
+        return texts;
+    }
+
+    private async buildWarnReports({ metricLog, service, serviceInstance }: MetricUpdate, mins: number, messages: string[]): Promise<Report[]> {
 
         const metrics: ProcessMetrics = await readFileFromEnd(metricLog, mins);
         const minMetric = metrics.min();
@@ -427,31 +453,39 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
         if (this.enableLarkChannel) {
 
             const images: any[] = [];
-            for (let chart of charts) {
-                const imageKey = await uploadImage(chart);
-                images.push({
-                    tag: 'img',
-                    alt: {
-                        content: '进程资源使用情况',
-                        tag: 'lark_md'
-                    },
-                    mode: 'fit_horizontal',
-                    img_key: imageKey,
-                });
+            if (isLarkAvailable()) {
+                for (let chart of charts) {
+                    try {
+                        const imageKey = await uploadImage(chart);
+                        images.push({
+                            tag: 'img',
+                            alt: {
+                                content: '进程资源使用情况',
+                                tag: 'lark_md'
+                            },
+                            mode: 'fit_horizontal',
+                            img_key: imageKey,
+                        });
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
             }
 
             if (images.length < 1) {
-                images.push({
-                    tag: 'div',
-                    fields: [
-                        {
-                            text: {
-                                content: '[ERROR] 图表图片无法展示',
-                                tag: 'lark_md'
-                            }
-                        },
-                    ]
-                });
+                for (let msg of messages) {
+                    images.push({
+                        tag: 'div',
+                        fields: [
+                            {
+                                text: {
+                                    content: msg,
+                                    tag: 'lark_md'
+                                }
+                            },
+                        ]
+                    });
+                }
             }
 
             const message: LarkMessage = {
