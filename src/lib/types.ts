@@ -90,6 +90,9 @@ export type SkywalkingConfig = {
         throttle: ThrottleConfig;
         jvm?: {
             cpu?: number;   //avg CPU usage warn line. range: 0 - 100 (%)
+        },
+        nodejs?: {
+            cpu?: number;   //avg CPU usage warn line. range: 0 - 100 (%)
         }
     };
     log?: SkywalkingLoggingConfig;
@@ -297,11 +300,14 @@ export type JVMThread = {
     timedWaitingStateThreadCount: string;
 };
 
-export type SkywalkingJVMMetricCollectData = {
+export type APMCollectData = {
     service: string;
     serviceInstance: string;
-    metrics: SkywalkingJVMMetric[];
 };
+
+export type SkywalkingJVMMetricCollectData = {
+    metrics: SkywalkingJVMMetric[];
+} & APMCollectData;
 
 export type JVMMetricValues = {
     cpu: number;
@@ -316,3 +322,21 @@ export type JVMMetric = {
     values: JVMMetricValues;
     time: number;
 };
+
+export type NodeJSMetricCollectData = {
+    processes: {
+        pid: number;
+        metrics: Omit<NodeJSMetric, 'pid'>[];
+    }[];
+} & APMCollectData;
+
+export type NodeJSMetricValues = {
+    cpu: number;
+    aliveTime: number;
+    memory: number;
+};
+
+export type NodeJSMetric = {
+    pid: number;
+    time: number;
+} & NodeJSMetricValues;

@@ -184,7 +184,8 @@ export default class RPCServer extends Server {
     }
 
     private registerRPCServices() {
-        const metricProto = loadMetricProto('JVMMetric.proto');
+        const jvmMetricProto = loadMetricProto('JVMMetric.proto');
+        const nodeJSMetricProto = loadMetricProto('NodeJSMetric.proto');
         const configDiscoveryProto = loadMetricProto('ConfigurationDiscoveryService.proto');
         const traceProto = loadMetricProto('Tracing.proto');
         const eventProto = loadMetricProto('Event.proto');
@@ -194,8 +195,12 @@ export default class RPCServer extends Server {
         const profileProto = loadMetricProto('Profile.proto');
         const loggingProto = loadMetricProto('Logging.proto');
 
-        this.registerSingleRPCService(metricProto.skywalking.v3.JVMMetricReportService.service, {
+        this.registerSingleRPCService(jvmMetricProto.skywalking.v3.JVMMetricReportService.service, {
             collect: this.createServiceHandler('JVMMetricReportService', 'collect', true),
+        });
+
+        this.registerSingleRPCService(nodeJSMetricProto.pocketapm.NodeJSMetricReportService.service, {
+            collect: this.createServiceHandler('NodeJSMetricReportService', 'collect', true),
         });
 
         this.registerSingleRPCService(profileProto.skywalking.v3.ProfileTask.service, {

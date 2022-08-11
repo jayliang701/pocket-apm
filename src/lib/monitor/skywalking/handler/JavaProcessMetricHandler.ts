@@ -76,8 +76,8 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
                     time: mins 
                 };
                 minRecords.push(avg);
-                console.log(`${serviceInstance} metric (minutes avg) ----> `, dayjs(mins).format('HH:mm'));
-                console.log(avg.values);
+                // console.log(`${serviceInstance} metric (minutes avg) ----> `, dayjs(mins).format('HH:mm'));
+                // console.log(avg.values);
                 records.length = 0;
 
                 this.flushJVMMetricLog(serviceInstance, minRecords);
