@@ -1,9 +1,9 @@
 module.exports = {
-    name: 'demo1',
+    name: 'test-app',
     // publicIP?: string;
     // privateIP?: string;
     skywalking: {
-        service: 'demo1',
+        service: 'test-app',
         warn: {
             durationMinutes: 5,  //每次预警时间间隔（分钟）, 默认5分钟
             // throttle: {
@@ -12,6 +12,9 @@ module.exports = {
             //     durationPerTime: 20 * 60,  //秒, 每次通知的时间间隔, 默认20分钟
             // },
             jvm: {
+                cpu: 40.00,  //0 ~ 100, N分钟 (durationMinutes) 内CPU平均使用率达到该值时将发出预警消息
+            },
+            nodejs: {
                 cpu: 40.00,  //0 ~ 100, N分钟 (durationMinutes) 内CPU平均使用率达到该值时将发出预警消息
             }
         },

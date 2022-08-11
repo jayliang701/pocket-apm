@@ -5,6 +5,8 @@ export const MINUTE = 60 * 1000;
 
 export const SPACE_LEN = Buffer.from(' ', 'utf-8').byteLength;
 
+export const PID_LEN = Buffer.from(`6555555`, 'utf-8').byteLength;
+
 export const TIMESTAMP_LEN = Buffer.from(`${Date.now()}`, 'utf-8').byteLength;
 
 export const METRIC_PECT_VALUE_LEN = Buffer.from('999.9999', 'utf-8').byteLength;
@@ -20,6 +22,13 @@ export const METRIC_LOG_LINE_LEN = TIMESTAMP_LEN + SPACE_LEN +
                                     METRIC_THREAD_COUNT_VALUE_LEN + SPACE_LEN +   //thread live count
                                     METRIC_THREAD_COUNT_VALUE_LEN + SPACE_LEN +   //thread daemon count
                                     METRIC_THREAD_COUNT_VALUE_LEN +               //thread blocked count
+                                    Buffer.from(`\n`, 'utf-8').byteLength;
+
+export const NODEJS_METRIC_LOG_LINE_LEN = TIMESTAMP_LEN + SPACE_LEN + 
+                                    PID_LEN + SPACE_LEN +                         //pid
+                                    METRIC_PECT_VALUE_LEN + SPACE_LEN +           //cpu usage
+                                    METRIC_MEMORY_VALUE_LEN + SPACE_LEN +         //memory usage
+                                    TIMESTAMP_LEN +                               //alive time
                                     Buffer.from(`\n`, 'utf-8').byteLength;
 
 export const ENV_VAR_LARK_ACCESS_TOKEN = 'lark@acess_token';

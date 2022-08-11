@@ -273,13 +273,23 @@ class ProcessMetrics {
         this.maxMetric.daemonThread = Math.max(this.maxMetric.daemonThread, metric.values.daemonThread);
         this.maxMetric.blockedThread = Math.max(this.maxMetric.blockedThread, metric.values.blockedThread);
 
-        this.minMetric.cpu = Math.min(this.minMetric.cpu, metric.values.cpu);
-        this.minMetric.heapMemory = Math.min(this.minMetric.heapMemory, metric.values.heapMemory);
-        this.minMetric.nonHeapMemory = Math.min(this.minMetric.nonHeapMemory, metric.values.nonHeapMemory);
-        this.minMetric.liveThread = Math.min(this.minMetric.liveThread, metric.values.liveThread);
-        this.minMetric.nonDaemonThread = Math.min(this.minMetric.liveThread - this.minMetric.daemonThread, metric.values.liveThread - metric.values.daemonThread);
-        this.minMetric.daemonThread = Math.min(this.minMetric.daemonThread, metric.values.daemonThread);
-        this.minMetric.blockedThread = Math.min(this.minMetric.blockedThread, metric.values.blockedThread);
+        if (this.length > 0) {
+            this.minMetric.cpu = Math.min(this.minMetric.cpu, metric.values.cpu);
+            this.minMetric.heapMemory = Math.min(this.minMetric.heapMemory, metric.values.heapMemory);
+            this.minMetric.nonHeapMemory = Math.min(this.minMetric.nonHeapMemory, metric.values.nonHeapMemory);
+            this.minMetric.liveThread = Math.min(this.minMetric.liveThread, metric.values.liveThread);
+            this.minMetric.nonDaemonThread = Math.min(this.minMetric.liveThread - this.minMetric.daemonThread, metric.values.liveThread - metric.values.daemonThread);
+            this.minMetric.daemonThread = Math.min(this.minMetric.daemonThread, metric.values.daemonThread);
+            this.minMetric.blockedThread = Math.min(this.minMetric.blockedThread, metric.values.blockedThread);
+        } else {
+            this.minMetric.cpu = metric.values.cpu;
+            this.minMetric.heapMemory = metric.values.heapMemory;
+            this.minMetric.nonHeapMemory = metric.values.nonHeapMemory;
+            this.minMetric.liveThread = metric.values.liveThread;
+            this.minMetric.nonDaemonThread = metric.values.liveThread - metric.values.daemonThread;
+            this.minMetric.daemonThread = metric.values.daemonThread;
+            this.minMetric.blockedThread = metric.values.blockedThread;
+        }
     }
 
     avg(): JVMMetricValues {
@@ -320,7 +330,7 @@ class ProcessMetrics {
 
 export default class JVMMetricReporterHandler extends SkywalkingReporterHandler {
 
-    private lastProcessTime: number = 0;
+    private lastProcessTime: number = Math.floor(Date.now() / MINUTE) * MINUTE;
 
     private throttle: Throttle = new Throttle();
 
@@ -332,15 +342,15 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
     private init() {
         this.refreshThrottle();
         //debug
-        setTimeout(() => {
-            this.process({
-                service: 'demo1',
-                serviceInstance: 'aebd8e55ca1640928c6d61ee469ee299@192.168.0.139',
-                metricLog: 'F:\\projects\\library\\pocket-apm\\.metric\\demo1\\aebd8e55ca1640928c6d61ee469ee299_192.168.0.139-jvm.log',
-                // metricLog: '/Users/jay/Documents/projects/library/pocket-apm/.metric/demo1/111.log',
-                timeRange: [ 1659677160000, 1659677400000 ],
-            });
-        }, 2000);
+        // setTimeout(() => {
+        //     this.process({
+        //         service: 'demo1',
+        //         serviceInstance: 'aebd8e55ca1640928c6d61ee469ee299@192.168.0.139',
+        //         metricLog: 'F:\\projects\\library\\pocket-apm\\.metric\\demo1\\aebd8e55ca1640928c6d61ee469ee299_192.168.0.139-jvm.log',
+        //         // metricLog: '/Users/jay/Documents/projects/library/pocket-apm/.metric/demo1/111.log',
+        //         timeRange: [ 1659677160000, 1659677400000 ],
+        //     });
+        // }, 2000);
     }
 
     private refreshThrottle() {

@@ -3,6 +3,7 @@ import { IMonitor } from "../monitor/Monitor";
 import JVMMetricReporter from "./skywalking/JVMMetricReporterHandler";
 import SkywalkingReporterHandler from "./skywalking/SkywalkingReporterHandler";
 import ProcessloggingReporterHandler from "./skywalking/ProcessLoggingReporterHandler";
+import NodeJSMetricReporterHandler from "./skywalking/NodeJSMetricReporterHandler";
 
 export default class SkywalkingReporter extends Reporter {
 
@@ -16,6 +17,7 @@ export default class SkywalkingReporter extends Reporter {
     protected init() {
         this.handlers = {
             'JVMMetricReportService': new JVMMetricReporter(this.monitor),
+            'NodeJSMetricReportService': new NodeJSMetricReporterHandler(this.monitor),
             'LogReportService': new ProcessloggingReporterHandler(this.monitor),
         };
     }

@@ -6,6 +6,7 @@ import fs from "fs/promises";
 import JavaProcessLoggingHandler from "./skywalking/handler/JavaProcessLoggingHandler";
 import SkywalkingReporter from "../reporter/SkywalkingReporter";
 import { setDefaultSkywalkingConfig } from "../../consts";
+import NodeJSMetricHandler from "./skywalking/handler/NodeJSMetricHandler";
 
 export default class SkywalkingMonitor extends Monitor {
 
@@ -55,6 +56,7 @@ export default class SkywalkingMonitor extends Monitor {
         await this.reporter.refresh();
 
         this.registerServiceHandler(JavaProcessMetricHandler);
+        this.registerServiceHandler(NodeJSMetricHandler);
         if (this.skywalkingConfig.log) {
             this.registerServiceHandler(JavaProcessLoggingHandler);
         }
