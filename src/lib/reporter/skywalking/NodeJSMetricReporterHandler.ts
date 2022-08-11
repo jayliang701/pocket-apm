@@ -2,10 +2,11 @@ import dayjs from "dayjs";
 import { EmailReport, LarkMessage, LarkReport, MetricUpdate, NodeJSMetric, NodeJSMetricValues, Report } from "../../types";
 import { METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, MINUTE, NODEJS_METRIC_LOG_LINE_LEN, PID_LEN, TIMESTAMP_LEN } from "../../../consts";
 import { IMonitor } from "../../monitor/Monitor";
-import { uploadImage } from "../../platform/Lark";
+import { isLarkAvailable, uploadImage } from "../../platform/Lark";
 import SkywalkingReporterHandler from "./SkywalkingReporterHandler";
 import Throttle from "../../utils/Throttle";
 import uniqolor from 'uniqolor';
+import { humanizeTimeText } from "../../utils";
 
 const LineByLineReader = require('line-by-line');
 
@@ -381,6 +382,7 @@ export default class NodeJSMetricReporterHandler extends SkywalkingReporterHandl
 
         const reports: Report[] = [];
 
+        const timeText = humanizeTimeText(mins * 60 * 1000);
         const now = Date.now();
         const timeStr = dayjs(Date.now()).format('YYYY-MM-DD HH:mm:ss');
         const title = `NodeJS应用资源异常报警 <${config.name}>`;
@@ -408,20 +410,22 @@ export default class NodeJSMetricReporterHandler extends SkywalkingReporterHandl
                 });
             }
 
-            for (let chart of charts) {
-                try {
-                    const imageKey = await uploadImage(chart);
-                    images.push({
-                        tag: 'img',
-                        alt: {
-                            content: '应用资源使用情况',
-                            tag: 'lark_md'
-                        },
-                        mode: 'fit_horizontal',
-                        img_key: imageKey,
-                    });
-                } catch {
-                    //upload image to lark fail
+            if (isLarkAvailable()) {
+                for (let chart of charts) {
+                    try {
+                        const imageKey = await uploadImage(chart);
+                        images.push({
+                            tag: 'img',
+                            alt: {
+                                content: '应用资源使用情况',
+                                tag: 'lark_md'
+                            },
+                            mode: 'fit_horizontal',
+                            img_key: imageKey,
+                        });
+                    } catch {
+                        //upload image to lark fail
+                    }
                 }
             }
 
@@ -493,6 +497,13 @@ export default class NodeJSMetricReporterHandler extends SkywalkingReporterHandl
                             ],
                             tag: 'div'
                         },
+                        {
+                            tag: 'div',
+                            text: {
+                                content: `过去 ${timeText} 内进程资源使用率:`,
+                                tag: 'lark_md'
+                            }
+                        },
                         ...images,
                         {
                             tag: 'hr'
@@ -535,7 +546,7 @@ export default class NodeJSMetricReporterHandler extends SkywalkingReporterHandl
                 `Service: ${service}`,
                 `Service Instance: ${serviceInstance}`,
                 ``,
-                `过去 ${mins} 分钟内:`,
+                `过去 ${timeText} 内:`,
             ];
 
             let htmlBody = `
@@ -546,6 +557,7 @@ export default class NodeJSMetricReporterHandler extends SkywalkingReporterHandl
                 <div>Service: ${service}</div>
                 <div>Service Instance: ${serviceInstance}</div>
                 <br/>
+                <div>过去 ${timeText} 内:</div>
             `;
 
             for (let pid in metricsDict) {

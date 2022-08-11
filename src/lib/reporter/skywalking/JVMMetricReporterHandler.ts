@@ -6,6 +6,7 @@ import { IMonitor } from "../../monitor/Monitor";
 import { isLarkAvailable, uploadImage } from "../../platform/Lark";
 import SkywalkingReporterHandler from "./SkywalkingReporterHandler";
 import Throttle from "../../utils/Throttle";
+import { humanizeTimeText } from "../../utils";
 
 const ChartJsImage = require('chartjs-to-image');
 
@@ -409,12 +410,7 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
     }
 
     private buildReportTexts(metrics: ProcessMetrics, avgMetric: JVMMetricValues, mins: number): string[] {
-        let timeText = '';
-        if (mins > 60) {
-            timeText = dayjs.duration(mins / 60, 'hours').humanize();
-        } else {
-            timeText = dayjs.duration(mins, 'minutes').humanize();
-        }
+        const timeText = humanizeTimeText(mins * 60 * 1000);
         const maxMetric = metrics.max();
         const texts: string[] = [
             `${timeText} 内进程资源使用率:`,
@@ -453,6 +449,19 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
         if (this.enableLarkChannel) {
 
             const images: any[] = [];
+
+            images.push({
+                tag: 'div',
+                fields: [
+                    {
+                        text: {
+                            content: messages.join('\r\n'),
+                            tag: 'lark_md'
+                        }
+                    },
+                ]
+            });
+
             if (isLarkAvailable()) {
                 for (let chart of charts) {
                     try {
@@ -466,25 +475,9 @@ export default class JVMMetricReporterHandler extends SkywalkingReporterHandler 
                             mode: 'fit_horizontal',
                             img_key: imageKey,
                         });
-                    } catch (err) {
-                        console.error(err);
+                    } catch {
+                        //upload image to lark fail
                     }
-                }
-            }
-
-            if (images.length < 1) {
-                for (let msg of messages) {
-                    images.push({
-                        tag: 'div',
-                        fields: [
-                            {
-                                text: {
-                                    content: msg,
-                                    tag: 'lark_md'
-                                }
-                            },
-                        ]
-                    });
                 }
             }
 
