@@ -2477,6 +2477,11 @@ human-signals@^2.1.0:
   resolved "https://registry.npmjs.org/human-signals/-/human-signals-2.1.0.tgz"
   integrity sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==
 
+humanize-duration@^3.27.2:
+  version "3.27.2"
+  resolved "https://registry.npmjs.org/humanize-duration/-/humanize-duration-3.27.2.tgz"
+  integrity sha512-A15OmA3FLFRnehvF4ZMocsxTZYvHq4ze7L+AgR1DeHw0xC9vMd4euInY83uqGU9/XXKNnVIEeKc1R8G8nKqtzg==
+
 iconv-lite@0.4.24:
   version "0.4.24"
   resolved "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.4.24.tgz"
@@ -3217,7 +3222,7 @@ levn@~0.3.0:
 
 line-by-line@^0.1.6:
   version "0.1.6"
-  resolved "https://registry.yarnpkg.com/line-by-line/-/line-by-line-0.1.6.tgz#6236edd1db2d1695addf11f0268e74a181561c30"
+  resolved "https://registry.npmjs.org/line-by-line/-/line-by-line-0.1.6.tgz"
   integrity sha512-MmwVPfOyp0lWnEZ3fBA8Ah4pMFvxO6WgWovqZNu7Y4J0TNnGcsV4S1LzECHbdgqk1hoHc2mFP1Axc37YUqwafg==
 
 lines-and-columns@^1.1.6:
@@ -4343,7 +4348,7 @@ unicode-property-aliases-ecmascript@^2.0.0:
 
 uniqolor@^1.0.2:
   version "1.0.2"
-  resolved "https://registry.yarnpkg.com/uniqolor/-/uniqolor-1.0.2.tgz#c9ce7e32eb72c22885a7c1e96ed5b5062cce8a17"
+  resolved "https://registry.npmjs.org/uniqolor/-/uniqolor-1.0.2.tgz"
   integrity sha512-uNU+1iuhQioRZBG8TyjC+dFRuVmnZ6vp29ukoZjhrX3U5TP8onSr6S+qnTNAOnzlakmHWB0r/MPeMfMJ3+T7kg==
 
 universalify@^0.1.2:

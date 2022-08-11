@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import Duration from 'dayjs/plugin/duration';
 import RelativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn'; 
+const humanizeDuration = require("humanize-duration");
 
 export const initTimeUtil = () => {
     dayjs.extend(Duration);
@@ -40,4 +41,8 @@ export function deepSet<S extends object, T extends object>(src: S, target: T, i
         }
     }
     return target;
+}
+
+export const humanizeTimeText = (ms: number): string => {   
+    return humanizeDuration(ms, { delimiter: ' ', language: 'zh_CN' });
 }

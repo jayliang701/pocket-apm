@@ -46,6 +46,7 @@
         "chartjs-to-image": "^1.0.5",
         "dayjs": "^1.11.0",
         "form-data": "^4.0.0",
+        "humanize-duration": "^3.27.2",
         "line-by-line": "^0.1.6",
         "nodemailer": "^6.7.3",
         "prepend-file": "^2.0.1",
