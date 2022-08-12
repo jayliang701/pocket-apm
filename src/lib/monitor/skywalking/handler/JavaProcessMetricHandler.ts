@@ -3,10 +3,25 @@ import ServiceHandler from "./ServiceHandler";
 import fs from 'fs/promises';
 import path from 'path';
 import { buildFilledString } from "../../../utils";
-import { JVMMetric, MetricUpdate, SkywalkingJVMMetricCollectData } from "../../../types";
+import { CleanMetricFilePolicy, JVMMetric, MetricUpdate, SkywalkingJVMMetricCollectData } from "../../../types";
 import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE } from "../../../../consts";
+import { Stats, truncateSync } from "fs";
 
 export default class JavaProcessMetricHandler extends ServiceHandler {
+
+    public static cleanMetricLog(file: string, stat: Stats, policy: CleanMetricFilePolicy) {
+        const maxSizeInKB = policy.maxSize;
+        const maxLines = Math.floor(maxSizeInKB * 1024 / METRIC_LOG_LINE_LEN);
+        const keepLines = Math.ceil(Math.min(maxLines * policy.keepPect, maxLines));
+
+        const keepBytesLen = METRIC_LOG_LINE_LEN * keepLines;
+
+        if (stat.size <= keepBytesLen) {
+            //do nothing
+        } else {
+            truncateSync(file, keepBytesLen);
+        }
+    }
 
     get service(): string {
         return 'JVMMetricReportService';

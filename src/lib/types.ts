@@ -82,9 +82,18 @@ export type SkywalkingLoggingConfig = {
     filter?: (log: SkywalkingLoggingCollectData, level: LogLevel) => boolean;
 } & LogBasicConfig;
 
+export type CleanMetricFilePolicy = {
+    maxSize: number;     //当文件超过xxx kb时，适时进行清理，默认 10 * 1024 KB
+    keepPect: number;   //每次清理要保留的内容百分比, 比如 1/4 意思是每次将保留1/4的数据，默认1/2
+    schedule: string;    //cron 计划任务字符串 * * * * * *
+};
+
 export type SkywalkingConfig = {
     service: string;
     metricLogPath: string;
+    clean: {
+        metricFile: CleanMetricFilePolicy;
+    },
     warn?: {
         durationMinutes: number;
         throttle: ThrottleConfig;

@@ -4,6 +4,11 @@ module.exports = {
     // privateIP?: string;
     skywalking: {
         service: 'test-app',
+        clean: {
+            metricFile: {
+                
+            }
+        },
         warn: {
             durationMinutes: 5,  //每次预警时间间隔（分钟）, 默认5分钟
             // throttle: {
