@@ -5,29 +5,73 @@ import path from 'path';
 import { buildFilledString } from "../../../utils";
 import { CleanMetricFilePolicy, JVMMetric, MetricUpdate, SkywalkingJVMMetricCollectData } from "../../../types";
 import { METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, METRIC_THREAD_COUNT_VALUE_LEN, MINUTE } from "../../../../consts";
-import { Stats, truncateSync } from "fs";
+import { createReadStream, createWriteStream, renameSync, Stats, truncateSync, unlinkSync } from "fs";
+import { reentrantLock, releaseLock } from "../../../utils/ReentrantLock";
 
 export default class JavaProcessMetricHandler extends ServiceHandler {
 
-    public static cleanMetricLog(file: string, stat: Stats, policy: CleanMetricFilePolicy) {
-        const maxSizeInKB = policy.maxSize;
-        const maxLines = Math.floor(maxSizeInKB * 1024 / METRIC_LOG_LINE_LEN);
-        const keepLines = Math.ceil(Math.min(maxLines * policy.keepPect, maxLines));
+    public static cleanMetricLog(file: string, stat: Stats, policy: CleanMetricFilePolicy): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const maxSizeInKB = policy.maxSize;
+            const maxLines = Math.floor(maxSizeInKB * 1024 / METRIC_LOG_LINE_LEN);
+            const keepLines = Math.ceil(Math.min(maxLines * policy.keepPect, maxLines));
 
-        const keepBytesLen = METRIC_LOG_LINE_LEN * keepLines;
+            const keepBytesLen = METRIC_LOG_LINE_LEN * keepLines;
 
-        if (stat.size <= keepBytesLen) {
-            //do nothing
-        } else {
-            truncateSync(file, keepBytesLen);
-        }
+            if (stat.size <= keepBytesLen) {
+                //do nothing
+            } else {
+                const tmpFile = file + `.${Date.now()}.tmp`;
+                const rs = createReadStream(file, { start: stat.size - keepBytesLen, encoding: 'binary' });
+                const ws = createWriteStream(tmpFile, { encoding: 'binary' });
+                const wws = rs.pipe(ws);
+                const closeStream = () => {
+                    if (rs) {
+                        rs.removeAllListeners('error');
+                        rs.close();
+                    }
+                    if (ws) {
+                        ws.removeAllListeners('error');
+                        ws.close();
+                    }
+                    if (wws) {
+                        wws.removeAllListeners('error');
+                        wws.removeAllListeners('finish');
+                        wws.close();
+                    }
+                }
+                rs.on('error', (err) => {
+                    closeStream();
+                    reject(err);
+                });
+                ws.on('error', (err) => {
+                    closeStream();
+                    reject(err);
+                });
+                wws.on('error', (err) => {
+                    closeStream();
+                    reject(err);
+                });
+                wws.on('finish', () => {
+                    closeStream();
+                    try {
+                        unlinkSync(file);
+                        renameSync(tmpFile, file);
+                    } catch {
+                        try {
+                            unlinkSync(tmpFile);
+                        } catch {}
+                    }
+
+                    resolve();
+                });
+            }
+        });
     }
 
     get service(): string {
         return 'JVMMetricReportService';
     }
-
-    isFlushing: boolean = false;
 
     lastTime: number = 0;
     
@@ -150,11 +194,12 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
             offset += METRIC_LOG_LINE_LEN;
         }
 
-        this.isFlushing = true;
-        fs.appendFile(file, lines).then(() => {
-            metrics.splice(0, removeNum);
-            this.isFlushing = false;
+        const key = await reentrantLock(file);
+        try {
+            await fs.appendFile(file, lines);
 
+            metrics.splice(0, removeNum);
+            
             const payload: MetricUpdate = {
                 service: this.config.service,
                 serviceInstance,
@@ -162,11 +207,10 @@ export default class JavaProcessMetricHandler extends ServiceHandler {
                 timeRange,
             };
             this.emitUpdate(payload);
-        }).catch(err => {
-            this.isFlushing = false;
+        } catch (err) {
             console.error(`write JVM metric log fail ---> `, err);
-        });
-
+        }
+        releaseLock(file, key);
     }
 
 }

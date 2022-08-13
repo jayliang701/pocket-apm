@@ -1,7 +1,9 @@
 import { readdirSync, Stats, statSync } from "fs";
 import path from "path";
-import { CleanMetricFilePolicy, SkywalkingConfig } from "src/lib/types";
+import { CleanMetricFilePolicy, SkywalkingConfig } from "../../types";
+import { reentrantLock, releaseLock } from "../../utils/ReentrantLock";
 import JavaProcessMetricHandler from "./handler/JavaProcessMetricHandler";
+import NodeJSMetricHandler from "./handler/NodeJSMetricHandler";
 const cron = require('node-cron');
 
 interface ScheduleTask {
@@ -9,9 +11,9 @@ interface ScheduleTask {
     start: () => void;
 }
 
-type CleanFunc = (file: string, stat: Stats, policy: CleanMetricFilePolicy) => void;
+type CleanFunc = (file: string, stat: Stats, policy: CleanMetricFilePolicy) => Promise<void>;
 
-export default class MetricHandler {
+export default class MetricCleaner {
 
     protected cleanTask: ScheduleTask;
 
@@ -19,7 +21,7 @@ export default class MetricHandler {
 
     protected cleanPolicy: Record<'jvm' | 'nodejs', CleanFunc> = {
         'jvm': JavaProcessMetricHandler.cleanMetricLog,
-        'nodejs': JavaProcessMetricHandler.cleanMetricLog,
+        'nodejs': NodeJSMetricHandler.cleanMetricLog,
     };
 
     protected getMetricLogFolder(): string {
@@ -44,11 +46,11 @@ export default class MetricHandler {
         this.cleanTask.start();
     }
 
-    public checkClean = () => {
-        console.log('start check clean...')
+    public checkClean = async () => {
+        console.log('check...')
         const files = this.getMetricLogFiles();
-        console.log(`found ${files.length} file(s)...`);
         const maxSizeInKB = this.config.clean.metricFile.maxSize;
+        const tasks: Promise<void>[] = [];
         for (let file of files) {
             let filePath = path.resolve(this.getMetricLogFolder(), file);
             const stats: Stats = statSync(filePath);
@@ -56,15 +58,15 @@ export default class MetricHandler {
             const sizeInKB: number = stats.size / 1024;
             if (sizeInKB > maxSizeInKB) {
                 //clean
-                console.log(`${file} clean...`)
-                this.doCleanJob(filePath, stats);
-            } else {
-                console.log(`${file} skip...`)
+                tasks.push(this.doCleanJob(filePath, stats));
             }
+        }
+        if (tasks.length > 0) {
+            Promise.all(tasks);
         }
     }
 
-    protected doCleanJob(file: string, stat: Stats) {
+    protected async doCleanJob(file: string, stat: Stats) {
         let func: CleanFunc;
         if (file.endsWith('-jvm.log')) {
             func = this.cleanPolicy['jvm'];
@@ -73,7 +75,9 @@ export default class MetricHandler {
         }
         if (func) {
             try {
-                func(file, stat, this.config.clean.metricFile);
+                const key = await reentrantLock(file);
+                await func(file, stat, this.config.clean.metricFile);
+                releaseLock(file, key);
             } catch (err) {
                 console.warn(`clean metric file <${file}> failed ---> `, err);
             }

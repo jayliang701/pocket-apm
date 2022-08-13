@@ -1,4 +1,6 @@
+const { appendFile } = require('fs/promises');
 const path = require('path');
+const { reentrantLock, releaseLock } = require('./dist/src/lib/utils/ReentrantLock');
 
 const MetricCleaner = require('./dist/src/lib/monitor/skywalking/MetricCleaner').default;
 
@@ -50,4 +52,23 @@ cleaner.refresh({
     // metricLogPath: '/xxx/xxx/xx',   //记录metric数据的文件存放路径, 默认为 ${process.cwd()}/.metric/${service}
 });
 
+const res = 'F:\\projects\\library\\pocket-apm\\.metric\\demo1\\a68655d283044206c102dd7a0821b93b_192.168.0.117-nodejs.log';
+
+// setTimeout(async () => {
+//     console.log('[2] try to append file');
+//     const key = await reentrantLock(res);
+//     console.log('[2] get lock');
+//     await appendFile(res, '1660288440000 0022248 000.0000 000033 0000002158996\n', { encoding: 'utf-8' });
+//     console.log('[2] append !!');
+//     releaseLock(res, key);
+// }, 2000);
+
+// setTimeout(async () => {
+//     console.log('[3] try to append file');
+//     const key = await reentrantLock(res);
+//     console.log('[3] get lock');
+//     await appendFile(res, '1660288441111 0022248 000.0000 000033 0000002158996\n', { encoding: 'utf-8' });
+//     console.log('[3] append !!');
+//     releaseLock(res, key);
+// }, 3000);
 cleaner.checkClean();

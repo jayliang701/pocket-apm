@@ -108,9 +108,9 @@ export const setDefaultSkywalkingConfig = (config: SkywalkingConfig | undefined)
     }
     config.clean = config.clean || {} as any;
     config.clean.metricFile = config.clean.metricFile || {} as any;
-    config.clean.metricFile.maxSize = config.clean.metricFile.maxSize || 10 * 1024;
+    config.clean.metricFile.maxSize = config.clean.metricFile.maxSize || 1 * 1024;
     config.clean.metricFile.keepPect = config.clean.metricFile.keepPect || 1/2;
-    config.clean.metricFile.schedule = config.clean.metricFile.schedule || '';
+    config.clean.metricFile.schedule = config.clean.metricFile.schedule || '0 * * * *';
 
     return config;
 }

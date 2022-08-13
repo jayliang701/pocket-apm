@@ -7,6 +7,7 @@ import JavaProcessLoggingHandler from "./skywalking/handler/JavaProcessLoggingHa
 import SkywalkingReporter from "../reporter/SkywalkingReporter";
 import { setDefaultSkywalkingConfig } from "../../consts";
 import NodeJSMetricHandler from "./skywalking/handler/NodeJSMetricHandler";
+import MetricCleaner from "./skywalking/MetricCleaner";
 
 export default class SkywalkingMonitor extends Monitor {
 
@@ -17,6 +18,8 @@ export default class SkywalkingMonitor extends Monitor {
     }
 
     private reporter: SkywalkingReporter = new SkywalkingReporter(this);
+
+    private cleaner: MetricCleaner = new MetricCleaner();
 
     protected setConfigDefaults() {
         setDefaultSkywalkingConfig(this.skywalkingConfig);
@@ -50,6 +53,8 @@ export default class SkywalkingMonitor extends Monitor {
         this.setConfigDefaults();
 
         await fs.mkdir(this.skywalkingConfig.metricLogPath, { recursive: true });
+
+        this.cleaner.refresh(this.skywalkingConfig);
 
         this.unRegisterServiceHandlers();
 

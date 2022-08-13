@@ -6,7 +6,9 @@ module.exports = {
         service: 'test-app',
         clean: {
             metricFile: {
-                
+                maxSize: 50,
+                keepPect: 1/2,
+                schedule: '0 * * * *',
             }
         },
         warn: {
