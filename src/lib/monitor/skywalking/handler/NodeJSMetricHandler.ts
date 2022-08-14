@@ -1,13 +1,74 @@
 import dayjs from "dayjs";
-import ServiceHandler from "./ServiceHandler";
 import path from 'path';
 import { buildFilledString } from "../../../utils";
-import { MetricUpdate, NodeJSMetricCollectData, NodeJSMetric } from "../../../types";
+import { MetricUpdate, NodeJSMetricCollectData, NodeJSMetric, CleanMetricFilePolicy } from "../../../types";
 import { NODEJS_METRIC_LOG_LINE_LEN, METRIC_MEMORY_VALUE_LEN, METRIC_PECT_VALUE_LEN, MINUTE, TIMESTAMP_LEN, PID_LEN } from "../../../../consts";
 import { Debounce } from "../../../utils/Debounce";
+import ServiceHandler from "./ServiceHandler";
+import { createReadStream, Stats, truncateSync } from "fs";
+import { reentrantLock, releaseLock } from "../../../utils/ReentrantLock";
 const prependFile = require('prepend-file');
 
 export default class NodeJSMetricHandler extends ServiceHandler {
+
+    public static cleanMetricLog(file: string, stat: Stats, policy: CleanMetricFilePolicy): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const maxSizeInKB = policy.maxSize;
+            const maxLines = Math.floor(maxSizeInKB * 1024 / NODEJS_METRIC_LOG_LINE_LEN);
+            const keepLines = Math.ceil(Math.min(maxLines * policy.keepPect, maxLines));
+
+            const keepBytesLen = NODEJS_METRIC_LOG_LINE_LEN * keepLines;
+
+            if (stat.size <= keepBytesLen) {
+                //do nothing
+            } else {
+                let time: number = 0;
+                let moreBytesLen: number = 0;
+                const rs = createReadStream(file, { start: keepBytesLen, encoding: 'binary', highWaterMark: NODEJS_METRIC_LOG_LINE_LEN });
+                
+                const flush = () => {
+                    try {
+                        truncateSync(file, keepBytesLen + moreBytesLen);
+                    } catch (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve();
+                }
+
+                const closeStream = () => {
+                    if (rs) {
+                        rs.removeAllListeners('data');
+                        rs.removeAllListeners('end');
+                        rs.close();
+                    }
+                }
+                rs.on('data', (chunk: Buffer) => {
+                    if (chunk.length === NODEJS_METRIC_LOG_LINE_LEN) {
+                        const ts = Number(chunk.slice(0, TIMESTAMP_LEN).toString('utf-8'));
+                        if (!time) time = ts;
+                        if (time === ts) {
+                            //相同的时间，但是不同的process
+                            //继续往下找，直到时间不同
+                            moreBytesLen += chunk.length;
+                        } else {
+                            //时间不同，终止stream
+                            closeStream();
+                            flush();
+                        }
+                    }
+                });
+                rs.on('error', (err) => {
+                    closeStream();
+                    reject(err);
+                });
+                rs.on('end', () => {
+                    closeStream();
+                    flush();
+                });
+            }
+        });
+    }
 
     get service(): string {
         return 'NodeJSMetricReportService';
@@ -192,12 +253,15 @@ export default class NodeJSMetricHandler extends ServiceHandler {
             allLines += lines;
         }
 
-        prependFile(file, allLines).then(() => {
+        const key = await reentrantLock(file);
+        try {
+            await prependFile(file, allLines);
+
             processMinRecords.forEach((metrics, pid) => {
                 const removeNum = removeNums.get(pid);
                 metrics.splice(0, removeNum);
             });
-
+    
             const payload: MetricUpdate = {
                 service: this.config.service,
                 serviceInstance,
@@ -205,9 +269,10 @@ export default class NodeJSMetricHandler extends ServiceHandler {
                 timeRange,
             };
             this.emitUpdate(payload);
-        }).catch(err => {
+        } catch (err) {
             console.error(`write NodeJS metric log fail ---> `, err);
-        });
+        }
+        releaseLock(file, key);
 
     }
     

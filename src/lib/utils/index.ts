@@ -46,3 +46,9 @@ export function deepSet<S extends object, T extends object>(src: S, target: T, i
 export const humanizeTimeText = (ms: number): string => {   
     return humanizeDuration(ms, { delimiter: ' ', language: 'zh_CN' });
 }
+
+export const sleep = (delay: number) => {
+    return new Promise(resolve => {
+        setTimeout(resolve, delay);
+    });
+}

@@ -4,6 +4,14 @@ module.exports = {
     // privateIP?: string;
     skywalking: {
         service: 'test-app',
+        clean: {
+            metricFile: {
+                maxSize: 50,
+                keepPect: 1/2,
+                schedule: '0 * * * *',
+                deleteUnmodifiedBefore: 2 * 24 * 60, //分钟，删除N分钟之内都没有修改过的文件，默认2天
+            }
+        },
         warn: {
             durationMinutes: 5,  //每次预警时间间隔（分钟）, 默认5分钟
             // throttle: {
