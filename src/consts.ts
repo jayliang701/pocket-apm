@@ -111,6 +111,7 @@ export const setDefaultSkywalkingConfig = (config: SkywalkingConfig | undefined)
     config.clean.metricFile.maxSize = config.clean.metricFile.maxSize || 1 * 1024;
     config.clean.metricFile.keepPect = config.clean.metricFile.keepPect || 1/2;
     config.clean.metricFile.schedule = config.clean.metricFile.schedule || '0 * * * *';
+    config.clean.metricFile.deleteUnmodifiedBefore = config.clean.metricFile.deleteUnmodifiedBefore || 2 * 24 * 60;
 
     return config;
 }

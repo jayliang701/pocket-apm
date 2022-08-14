@@ -1,4 +1,4 @@
-import { readdirSync, Stats, statSync } from "fs";
+import { readdirSync, Stats, statSync, unlinkSync } from "fs";
 import path from "path";
 import { CleanMetricFilePolicy, SkywalkingConfig } from "../../types";
 import { reentrantLock, releaseLock } from "../../utils/ReentrantLock";
@@ -49,11 +49,21 @@ export default class MetricCleaner {
     public checkClean = async () => {
         console.log('check...')
         const files = this.getMetricLogFiles();
-        const maxSizeInKB = this.config.clean.metricFile.maxSize;
+        const { metricFile: cleanPolicy } = this.config.clean;
+        const maxSizeInKB = cleanPolicy.maxSize;
         const tasks: Promise<void>[] = [];
+        const now = Date.now();
         for (let file of files) {
             let filePath = path.resolve(this.getMetricLogFolder(), file);
             const stats: Stats = statSync(filePath);
+            const modifiedTime = stats.mtimeMs;
+            if ((now - modifiedTime) > (cleanPolicy.deleteUnmodifiedBefore * 60 * 1000)) {
+                //文件太久没有更新，说明是历史文件，删除
+                try {
+                    unlinkSync(filePath);
+                } catch {}
+                continue;
+            }
             
             const sizeInKB: number = stats.size / 1024;
             if (sizeInKB > maxSizeInKB) {

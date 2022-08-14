@@ -86,6 +86,7 @@ export type CleanMetricFilePolicy = {
     maxSize: number;     //当文件超过xxx kb时，适时进行清理，默认 10 * 1024 KB
     keepPect: number;   //每次清理要保留的内容百分比, 比如 1/4 意思是每次将保留1/4的数据，默认1/2
     schedule: string;    //cron 计划任务字符串 * * * * * *
+    deleteUnmodifiedBefore: number, //分钟，删除N分钟之内都没有修改过的文件，默认2天
 };
 
 export type SkywalkingConfig = {

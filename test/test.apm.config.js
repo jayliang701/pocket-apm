@@ -9,6 +9,7 @@ module.exports = {
                 maxSize: 50,
                 keepPect: 1/2,
                 schedule: '0 * * * *',
+                deleteUnmodifiedBefore: 2 * 24 * 60, //分钟，删除N分钟之内都没有修改过的文件，默认2天
             }
         },
         warn: {
