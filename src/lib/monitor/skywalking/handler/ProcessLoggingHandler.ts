@@ -5,7 +5,7 @@ import Chain from "../../../utils/Chain";
 import LogNode from "../../../utils/LogNode";
 import Throttle from "../../../utils/Throttle";
 
-export default class JavaProcessLoggingHandler extends ServiceHandler {
+export default class ProcessLoggingHandler extends ServiceHandler {
 
     get service(): string {
         return 'LogReportService';
@@ -84,19 +84,45 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
         }
      */
 
-    private levelIndex: number = 0;
-    private prevLogTime: number = 0;
+    private levelIndexMap: Map<string, number> = new Map();
+    private subIdIndexMap: Map<string, number> = new Map();
+    private prevLogTimeMap: Map<string, Map<string, number>> = new Map();
     
     private pendingAlerts: Record<string, Chain<Log>> = {};
-    private timers: Record<string, any> = {};
+    private timers: Record<string, NodeJS.Timeout> = {};
+
+    private getPrevLogTime(serviceInstance: string, subId: string): number {
+        let map = this.prevLogTimeMap.get(serviceInstance);
+        if (!map) {
+            map = new Map();
+            this.prevLogTimeMap.set(serviceInstance, map);
+        }
+        if (!map.has(subId)) {
+            map.set(subId, 0);
+        }
+        return map.get(subId);
+    }
+
+    private setPrevLogTime(serviceInstance: string, subId: string, time: number): void {
+        let map = this.prevLogTimeMap.get(serviceInstance);
+        if (!map) {
+            map = new Map();
+            this.prevLogTimeMap.set(serviceInstance, map);
+        }
+        map.set(subId, time);
+    }
 
     collect(data: SkywalkingLoggingCollectData): void {
         if (this.throttle.isBlocked) return;
 
-        const { timestamp, serviceInstance } = data;
-        if (Number(timestamp) < this.prevLogTime) {
+        const { timestamp, serviceInstance, tags } = data;
+        const subId = this.parseSubId(data);
+        const prevLogTime = this.getPrevLogTime(serviceInstance, subId);
+        if (Number(timestamp) < prevLogTime) {
             return;
         }
+        this.setPrevLogTime(serviceInstance, subId, Number(timestamp));
+
         const level = this.parseLoggingLevel(data);
 
         if (!this.levelFilter.has(level)) {
@@ -107,6 +133,7 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
         }
 
         const log = this.parseLog(data);
+
         if (!this.pendingAlerts[serviceInstance]) {
             this.pendingAlerts[serviceInstance] = new Chain(this.loggingConfig.debounce.maxNum);
         }
@@ -120,7 +147,7 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
         if (!logs || logs.length < 1) return;
 
         if (!this.timers[serviceInstance]) {
-            this.timers[serviceInstance] = setTimeout(async () => {
+            this.timers[serviceInstance] = setTimeout(() => {
                 delete this.timers[serviceInstance];
                 try {
                     const alerts = logs.toArray();
@@ -158,7 +185,10 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
         const { tags } = data;
         let type: LogLevel = 'INFO';
         if (tags && tags.data && tags.data.length > 0) {
-            let tag = tags.data.length > this.levelIndex ? tags.data[this.levelIndex] : undefined;
+
+            let levelIndex = this.levelIndexMap.has(data.serviceInstance) ? this.levelIndexMap.get(data.serviceInstance) : tags.data.length - 1;
+
+            let tag = tags.data.length > levelIndex ? tags.data[levelIndex] : undefined;
             if (tag && tag.key === 'level') {
                 type = tag.value as LogLevel;
             } else {
@@ -166,13 +196,42 @@ export default class JavaProcessLoggingHandler extends ServiceHandler {
                     let tagItem = tags.data[i];
                     if (tagItem && tagItem.key === 'level') {
                         type = tagItem.value as LogLevel;
-                        this.levelIndex = i;
+                        levelIndex = i;
+                        this.levelIndexMap.set(data.serviceInstance, levelIndex);
                         break;
                     }
                 }
             }
         }
         return type;
+    }
+
+    private parseSubId(data: SkywalkingLoggingCollectData): string {
+        const { tags } = data;
+        let subId: string = '*';
+        if (tags && tags.data && tags.data.length > 0) {
+
+            let subIdIndex = this.subIdIndexMap.has(data.serviceInstance) ? this.subIdIndexMap.get(data.serviceInstance) : tags.data.length - 1;
+
+            if (subIdIndex === -1) return subId;
+
+            let tag = tags.data.length > subIdIndex ? tags.data[subIdIndex] : undefined;
+            if (tag && tag.key === 'pid') {
+                subId = tag.value;
+            } else {
+                subIdIndex = -1;
+                for (let i = 0; i < tags.data.length; i ++) {
+                    let tagItem = tags.data[i];
+                    if (tagItem && tagItem.key === 'pid') {
+                        subId = tagItem.value;
+                        subIdIndex = i;
+                        break;
+                    }
+                }
+                this.subIdIndexMap.set(data.serviceInstance, subIdIndex);
+            }
+        }
+        return subId;
     }
 
     notify = (serviceInstance: string, alerts: Log[]) => {

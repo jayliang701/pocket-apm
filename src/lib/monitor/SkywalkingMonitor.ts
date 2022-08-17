@@ -3,7 +3,7 @@ import { RPCServiceEventPayload, SkywalkingConfig } from "../types";
 import ServiceHandler from "./skywalking/handler/ServiceHandler";
 import JavaProcessMetricHandler from "./skywalking/handler/JavaProcessMetricHandler";
 import fs from "fs/promises";
-import JavaProcessLoggingHandler from "./skywalking/handler/JavaProcessLoggingHandler";
+import ProcessLoggingHandler from "./skywalking/handler/ProcessLoggingHandler";
 import SkywalkingReporter from "../reporter/SkywalkingReporter";
 import { setDefaultSkywalkingConfig } from "../../consts";
 import NodeJSMetricHandler from "./skywalking/handler/NodeJSMetricHandler";
@@ -63,7 +63,7 @@ export default class SkywalkingMonitor extends Monitor {
         this.registerServiceHandler(JavaProcessMetricHandler);
         this.registerServiceHandler(NodeJSMetricHandler);
         if (this.skywalkingConfig.log) {
-            this.registerServiceHandler(JavaProcessLoggingHandler);
+            this.registerServiceHandler(ProcessLoggingHandler);
         }
 
         await super.refresh();
