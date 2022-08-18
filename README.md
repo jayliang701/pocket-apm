@@ -14,7 +14,7 @@ Pocket-APM 不具备强大的数据持久化能力, 所以并不适合用来管�
 - 你不需要时刻关注应用的运行性能, 只想在出现异常时及时得到通知.
 
 ## 安装和使用
-### 源码安装
+### 源码方式
 请确保你已经安装了NodeJS和NPM. 首先从 github 下载/克隆源码, 然后安装 npm 依赖包:
 ```bash
 npm install
@@ -25,6 +25,49 @@ npm install
 运行 Pocket-APM (默认使用 12700 端口):
 ```bash
 npm run start
+```
+
+### Docker方式
+Pocket-APM 仍处于测试阶段, 因此我并没有将它打包上传到 Docker Hub，如果你想以 Docker 方式运行, 请参考以下步骤:
+```bash
+# 从 github 下载/克隆源码, 然后安装 npm 依赖包
+npm install
+# or
+# yarn
+
+# 打包 Docker 镜像
+npm run build:docker
+
+# 启动 Docker 镜像
+docker run --name pocket-apm -p 12700:12700 -v "some_where_in_host/conf:/pocket-apm/conf" -d pocket-apm:latest
+```
+在宿主机上创建一个目录, 用于存放 config.js 和应用配置js文件, 例如:
+```
+|-- some_where_in_host
+|   |-- conf
+|   |   |-- config.js
+|   |   |-- apps
+|   |   |   |-- app1.apm.config.js
+|   |   |   |-- app2.apm.config.js
+|   |   |   |-- app3.apm.config.js
+```
+在 config.js 配置文件中使用 /pocket-apm/conf 作为应用配置文件的绝对路径:
+```javascript
+// config.js
+
+module.exports = {
+    apps: [
+        '/pocket-apm/conf/apps/app1.apm.config.js',
+        '/pocket-apm/conf/apps/app2.apm.config.js',
+        ...
+    ],
+    ...
+}
+
+``` 
+请设置好配置文件后, 再启动 Docker 镜像:
+```bash
+docker run --name pocket-apm -p 12700:12700 -v "some_where_in_host/conf:/pocket-apm/conf" -d pocket-apm:latest
 ```
 
 
@@ -59,6 +102,59 @@ module.exports = {
 #### 修改配置
 无论是修改 config.js 或是 应用监控配置, 都无需重启 Pocket-APM 服务. Pocket-APM 会监控配置文件, 一旦配置文件被修改保存, Pocket-APM 将在数秒钟后自动加载最新的配置. 当你配置了多个应用监控时, 修改其中一个应用监控的配置不会导致其他应用监控的重新加载. 
 
+### 预警报告推送
+Pocket-APM 的设计目的就是在应用出现异常时能迅速的将异常信息推送给工程师. 目前 Pocket-APM 支持飞书机器人和 Email 推送. 
+#### 飞书机器人推送
+飞书机器人推送指的是通过调用飞书机器人 webhook 接口, 向飞书群组发送预警报告. 飞书机器人配置请参考 [飞书自定义机器人指南](https://open.feishu.cn/document/ukTMukTMukTM/ucTM5YjL3ETO24yNxkjN). 如果你不需要飞书推送, 请删除整个 notify.lark 配置.
+```javascript
+// config.js
+
+module.exports = {
+    ...
+    notify: {
+        //[可选] 飞书机器人消息推送
+        lark: {
+            app_id: '飞书应用app_id',   //[可选]
+            app_secret: '飞书应用秘钥',   //[可选]
+            webhook: '飞书机器人webhook接口地址',
+            secret: 'webhook接口秘钥',   //[可选]
+        },
+        ...
+    }
+}
+```
+飞书应用 app_id 和秘钥并不是必须的, 但如果你希望收到的预警报告带有图表图片, 那么你才需要创建一个飞书应用并设置 app_id 和秘钥, 否则 Pocket-APM 将只推送文字信息. 请注意, 配置飞书应用后, 需要开通应用的上传图片权限, 并发布应用. 请参考 [飞书应用权限](https://open.feishu.cn/document/ukTMukTMukTM/uQjN3QjL0YzN04CN2cDN?lang=zh-CN).
+
+
+#### Email 推送
+如果你不需要 Email 推送, 请删除整个 notify.email 配置.
+```javascript
+// config.js
+
+module.exports = {
+    ...
+    notify: {
+        ...
+        //邮件推送
+        email: {
+            mailTo: 'Jay Liang<xxx@xxx.com>',   //收件人地址, 多个地址用半角逗号隔开
+            mailFrom: 'SRE<xxxx@xxxx.com>',  //发件人信息
+            smtp: {
+                // 这里以 腾讯企业邮箱 为例
+                pool: true,
+                host: "smtp.exmail.qq.com",
+                port: 465,
+                secure: true, // use TLS
+                auth: {
+                    user: "xxxx@xxxx.com",
+                    pass: "xxxxxxx",
+                }
+            }
+        }
+    }
+}
+```
+Pocket-APM 使用 [nodemailer](https://www.npmjs.com/package/nodemailer) 发送邮件, email.smtp 配置可参考 [Nodermailer SMTP transport](https://nodemailer.com/smtp/).
 
 ### 应用性能监控
 #### Java 应用性能监控
@@ -71,6 +167,7 @@ Pocket-APM 使用了 [Apache Skywalking 的部分 Google Proto 数据协议包](
 -javaagent=/xx/xx/xx/skywalking-agent.jar 
 -DSW_AGENT_NAME="my-java-app"  # 你自定义的应用的名称, 和 Pocket-APM 应用监控配置文件中的 skywalking.service 一致
 -DSW_AGENT_COLLECTOR_BACKEND_SERVICES="127.0.0.1:12700"  # Pocket-APM 服务的连接地址和端口
+3. 启动 Java 应用
 ```
 
 #### NodeJS 应用性能监控
@@ -159,8 +256,8 @@ module.exports = {
     }
 }
 ``` 
-
-理论上 Pocket-APM 支持各种格式或类型的日志, 你需要根据实际情况修改 log 配置, 以便 Pocket-APM 可以正确解析日志字符串. 完整的配置说明请参考 [./test/test.apm.config.js](https://github.com/jayliang701/pocket-apm/blob/main/test/test.apm.config.js)
+这种日志采集方式无关日志内容是由什么应用程序生成的, 因此理论上你可以监控用任意编程语言(如 Go, C++, PHP等)编写的应用程序所产生的日志, 前提是你需要编写正确的正则表达式或函数, 使得 Pocket-APM 能够识别日志内容. 关于日志过滤器的配置, 请参考 [./test/test.apm.config.js](https://github.com/jayliang701/pocket-apm/blob/main/test/test.apm.config.js) 
+> :warning: **在当前最新版本中, 如果使用 Docker 方式运行, 将无法以监控文件的方式采集日志**, 因为 Pocket-APM 在 Docker 容器中无法识别文件位置.
 
 
 #### 应用日志监控

@@ -1,6 +1,6 @@
 module.exports = {
     apps: [
-        'test/test.apm.config.js',
+        // 'test/test.apm.config.js',
     ],
     skywalking: {
         port: 12700,
