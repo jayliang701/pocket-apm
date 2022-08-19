@@ -13,6 +13,12 @@ Pocket-APM 不具备强大的数据持久化能力, 所以并不适合用来管�
 - 你没有足够的硬件和人力资源去部署和使用那些功能强大的APM工具;
 - 你不需要时刻关注应用的运行性能, 只想在出现异常时及时得到通知.
 
+## 设计实现
+Pocket-APM 会根据配置文件, 为每一个需要监控的应用创建 (fork) 一个独立的 child_process 监控进程. 每一个监控进程将独自管理对应的应用配置, 处理日志文件监控. 对于来自应用 Agent 采集器的 gRPC 数据, 由 Pocket-APM 主进程接收并根据应用的名称, 分发到对应的 child_process 监控进程中, 由监控进程处理 gRPC 采集数据, 以及决定是否要发出异常预警报告. 
+| :zap:         每一个应用监控都是独立的, 且与其他应用监控隔离. |
+|--------------------------------------------------------|
+![Pocket-APM 设计实现](https://raw.githubusercontent.com/jayliang701/pocket-apm/main/doc/imgs/how-pocket-apm-works.jpg "How Pocket-APM works")
+
 ## 安装和使用
 ### 源码方式
 请确保你已经安装了NodeJS和NPM. 首先从 github 下载/克隆源码, 然后安装 npm 依赖包:
