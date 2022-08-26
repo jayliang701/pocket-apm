@@ -180,61 +180,7 @@ Pocket-APM 使用了 [Apache Skywalking 的部分 Google Proto 数据协议包](
 #### NodeJS 应用性能监控
 由于 Skywalking 官方的 NodeJS Agent 不提供对 NodeJS 应用的性能监控, 无法得知应用的 CPU 和内存使用数据, 因此我编写了 [nodejs-apm-agent](https://github.com/jayliang701/nodejs-apm-agent) 作为监控数据采集器. 目前支持 Node 原生启动方式和 pm2 托管方式.
 
-使用方法:
-1. 下载/克隆 [nodejs-apm-agent](https://github.com/jayliang701/nodejs-apm-agent) 源代码
-2. 修改 agent 配置文件
-```javascript
-// ./agent.config.js
-module.exports = {
-    service: 'test-app',     //应用名称，和 Pocket-APM 的应用监控配置中的 skywalking.service 一致
-    // serviceInstance: 'machine-01',   //[可选] 默认 agent 会自动生成
-    serverAddress: '127.0.0.1:12700',   //Pocket-APM 服务的连接地址和端口
-    collect: {
-        metric: {
-            enabled: true,
-            duration: 5,     //秒, 每N秒发送一次 CPU 和 内存使用数据
-        },
-        logging: {
-            enabled: true,
-            globalVarName: 'logger',
-        }
-    }
-}
-```
-2. 编译
-```bash
-npm run build
-```
-3. 通过修改 NodeJS 应用的启动参数注入采集器. <br/>
-原生 node 启动方式
-```bash
-# 这里使用跨平台环境变量工具 cross-env 作为举例说明
-cross-env APM_AGENT_CONFIG="{nodejs-apm-agent 下载/克隆路径}/dist/agent.config.js" node -r '{nodejs-apm-agent 下载/克隆路径}/dist/index.js' server
-```
-pm2 托管方式
-```javascript
-// pm2.json
-{
-    "apps": [
-        {
-            "name": "server",
-            "script": "./server.js",
-            "cwd":"./",
-            "instances": 2,
-            "exec_mode": "cluster",
-            "node_args": "-r {nodejs-apm-agent 下载/克隆路径}/dist/index.js",
-            "env": {
-                "APM_AGENT_CONFIG": "{nodejs-apm-agent 下载/克隆路径}/dist/agent.config.js"
-            },
-            "env_production": {
-               "NODE_ENV": "production"
-            }
-        }
-    ]
-}
-
-pm2 start pm2.json
-```
+使用方法请移步 [nodejs-apm-agent](https://github.com/jayliang701/nodejs-apm-agent)
 
 
 ### 日志监控
