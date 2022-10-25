@@ -171,7 +171,7 @@ Pocket-APM 使用了 [Apache Skywalking 的部分 Google Proto 数据协议包](
 1. 下载 [Skywalking Java Agent](https://github.com/apache/skywalking-java)
 2. 在 Java 应用的 JVM 启动参数里增加以下配置:
 ```bash
--javaagent=/xx/xx/xx/skywalking-agent.jar 
+-javaagent:/xx/xx/xx/skywalking-agent.jar 
 -DSW_AGENT_NAME="my-java-app"  # 你自定义的应用的名称, 和 Pocket-APM 应用监控配置文件中的 skywalking.service 一致
 -DSW_AGENT_COLLECTOR_BACKEND_SERVICES="127.0.0.1:12700"  # Pocket-APM 服务的连接地址和端口
 3. 启动 Java 应用
